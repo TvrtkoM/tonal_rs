@@ -48,6 +48,14 @@ pub struct Pitch {
     pub(crate) dir: Option<Direction>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PitchParts {
+    pub step: usize,
+    pub alt: i32,
+    pub oct: Option<i32>,
+    pub dir: Option<Direction>,
+}
+
 impl Pitch {
     pub fn chroma(&self) -> i32 {
         (((STEPS[self.step] + self.alt) % 12) + 12) % 12
@@ -103,8 +111,13 @@ impl Pitch {
         self.dir
     }
 
-    pub fn parts(&self) -> (usize, i32, Option<i32>, Option<Direction>) {
-        (self.step, self.alt, self.oct, self.dir)
+    pub fn parts(&self) -> PitchParts {
+        PitchParts {
+            step: self.step,
+            alt: self.alt,
+            oct: self.oct,
+            dir: self.dir,
+        }
     }
 }
 

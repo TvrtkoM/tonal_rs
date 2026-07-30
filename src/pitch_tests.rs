@@ -95,7 +95,10 @@ fn test_accessors() {
     assert_eq!(p.alt(), 1);
     assert_eq!(p.oct(), Some(6));
     assert_eq!(p.dir(), None);
-    assert_eq!(p.parts(), (4, 1, Some(6), None));
+    assert_eq!(
+        p.parts(),
+        PitchParts { step: 4, alt: 1, oct: Some(6), dir: None }
+    );
 
     assert_eq!(p_5().dir(), Some(Direction::Down));
 }
