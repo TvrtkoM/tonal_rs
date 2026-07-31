@@ -23,6 +23,10 @@ const fn make_steps_to_octs() -> [i32; 7] {
 
 const STEPS_TO_OCTS: [i32; 7] = make_steps_to_octs();
 
+pub trait Named {
+    fn name(&self) -> String;
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(i8)]
 pub enum Direction {
@@ -33,7 +37,7 @@ pub enum Direction {
 type Fifths = i32;
 type Octaves = i32;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PitchCoordinates {
     PitchClass(Fifths),
     Note(Fifths, Octaves),
@@ -118,6 +122,29 @@ impl Pitch {
             oct: self.oct,
             dir: self.dir,
         }
+    }
+}
+
+pub fn alt_to_acc(alt: i32) -> String {
+    if alt < 0 {
+        "b".repeat(alt.unsigned_abs() as usize)
+    } else {
+        "#".repeat(alt as usize)
+    }
+}
+
+pub fn step_to_letter(step: usize) -> Option<char> {
+    "CDEFGAB".chars().nth(step)
+}
+
+impl Named for Pitch {
+    fn name(&self) -> String {
+        let Pitch { step, alt, oct, .. } = *self;
+        let Some(letter) = step_to_letter(step) else {
+            return String::new();
+        };
+        let oct = oct.map(|o| o.to_string()).unwrap_or_default();
+        format!("{}{}{}", letter, alt_to_acc(alt), oct)
     }
 }
 

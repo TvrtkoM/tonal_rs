@@ -89,6 +89,21 @@ fn test_from_coordinates() {
 }
 
 #[test]
+fn test_name() {
+    // Named for Pitch (moved into this module)
+    assert_eq!(c().name(), "C");
+    assert_eq!(cs().name(), "C#");
+    assert_eq!(cb().name(), "Cb");
+    assert_eq!(a().name(), "A");
+    assert_eq!(c4().name(), "C4");
+    assert_eq!(a4().name(), "A4");
+    assert_eq!(gs6().name(), "G#6");
+    // out-of-range step yields an empty name
+    let bad = Pitch { step: 8, alt: 0, oct: None, dir: None };
+    assert_eq!(bad.name(), "");
+}
+
+#[test]
 fn test_accessors() {
     let p = gs6();
     assert_eq!(p.step(), 4);
