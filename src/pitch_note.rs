@@ -1,4 +1,7 @@
-use crate::pitch::{Named, Pitch, PitchCoordinates};
+use crate::{
+    error::TonalParseError,
+    pitch::{Named, Pitch, PitchCoordinates},
+};
 use regex::Regex;
 use std::sync::LazyLock;
 
@@ -73,31 +76,22 @@ pub fn note(name: &str) -> Option<Note> {
     parse(name)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParseNoteError {
-    input: String,
-}
-
-impl std::fmt::Display for ParseNoteError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Invalid note name: {}", self.input)
-    }
-}
-
-impl std::error::Error for ParseNoteError {}
-
 impl TryFrom<&Pitch> for Note {
-    type Error = ParseNoteError;
+    type Error = TonalParseError;
     fn try_from(p: &Pitch) -> Result<Self, Self::Error> {
         let name = p.name();
-        note(&name).ok_or(ParseNoteError { input: name })
+        note(&name).ok_or(TonalParseError {
+            entity: String::from("note"),
+            input: name,
+        })
     }
 }
 
 impl TryFrom<&str> for Note {
-    type Error = ParseNoteError;
+    type Error = TonalParseError;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        note(s).ok_or_else(|| ParseNoteError {
+        note(s).ok_or_else(|| TonalParseError {
+            entity: String::from("note"),
             input: s.to_string(),
         })
     }

@@ -39,6 +39,7 @@ pub struct PitchClassCoordinates(pub Fifths);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NoteCoordinates(pub Fifths, pub Octaves);
 
+// only used as input to conversion e.g. PitchCoordinates to Pitch
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct IntervalCoordinates(pub Fifths, pub Octaves, pub Direction);
 
@@ -65,14 +66,46 @@ pub struct PitchParts {
     pub dir: Option<Direction>,
 }
 
+pub fn semitones(step: usize, alt: i32, oct: i32, dir: Option<Direction>) -> i32 {
+    let dir_val = dir.map_or(1, |d| d as i32);
+    dir_val * (STEPS[step] + alt + 12 * oct)
+}
+
+pub fn chroma(step: usize, alt: i32, dir: Option<Direction>) -> i32 {
+    let dir_val = dir.map_or(1, |d| d as i32);
+    (((dir_val * (STEPS[step] + alt)) % 12) + 12) % 12
+}
+
+pub fn coordinates(
+    step: usize,
+    alt: i32,
+    oct: Option<i32>,
+    dir: Option<Direction>,
+) -> PitchCoordinates {
+    let dir_val = dir.map_or(1, |d| d as i32);
+    // adding 7 fifths to a note makes it a sharp
+    let f = FIFTHS[step] + 7 * alt;
+
+    match oct {
+        Some(o) => {
+            // correct octave from octaves added by fifths
+            // STEPS_TO_OCTS[step] - expressing letter as fifths of C overshoots into other octaves
+            // 4 * alt - e.g. sharp adds 7 fifths = 49 semitones = 4 octaves + 1 semitone and we only
+            //   wanted a semitone
+            let o = o - STEPS_TO_OCTS[step] - 4 * alt;
+            PitchCoordinates::Note(NoteCoordinates(dir_val * f, dir_val * o))
+        }
+        None => PitchCoordinates::PitchClass(PitchClassCoordinates(dir_val * f)),
+    }
+}
+
 impl Pitch {
     pub fn chroma(&self) -> i32 {
-        (((STEPS[self.step] + self.alt) % 12) + 12) % 12
+        chroma(self.step, self.alt, None)
     }
 
     pub fn height(&self) -> i32 {
-        let dir_val = self.dir.map_or(1, |d| d as i32);
-        dir_val * (STEPS[self.step] + self.alt + 12 * self.oct.unwrap_or(-100))
+        semitones(self.step, self.alt, self.oct.unwrap_or(-100), self.dir)
     }
 
     pub fn midi(&self) -> Option<i32> {
@@ -87,21 +120,7 @@ impl Pitch {
             oct,
             dir,
         } = *self;
-        let dir_val = dir.map_or(1, |d| d as i32);
-        // adding 7 fifths to a note makes it a sharp
-        let f = FIFTHS[step] + 7 * alt;
-
-        match oct {
-            Some(o) => {
-                // correct octave from octaves added by fifths
-                // STEPS_TO_OCTS[step] - expressing letter as fifths of C overshoots into other octaves
-                // 4 * alt - e.g. sharp adds 7 fifths = 49 semitones = 4 octaves + 1 semitone and we only
-                //   wanted a semitone
-                let o = o - STEPS_TO_OCTS[step] - 4 * alt;
-                PitchCoordinates::Note(NoteCoordinates(dir_val * f, dir_val * o))
-            }
-            None => PitchCoordinates::PitchClass(PitchClassCoordinates(dir_val * f)),
-        }
+        coordinates(step, alt, oct, dir)
     }
 
     pub fn step(&self) -> usize {
@@ -304,23 +323,53 @@ mod tests {
     #[test]
     fn test_coordinates() {
         // pitch classes
-        assert_eq!(c().coordinates(), PitchCoordinates::PitchClass(PitchClassCoordinates(0)));
-        assert_eq!(a().coordinates(), PitchCoordinates::PitchClass(PitchClassCoordinates(3)));
-        assert_eq!(cs().coordinates(), PitchCoordinates::PitchClass(PitchClassCoordinates(7)));
-        assert_eq!(cb().coordinates(), PitchCoordinates::PitchClass(PitchClassCoordinates(-7)));
+        assert_eq!(
+            c().coordinates(),
+            PitchCoordinates::PitchClass(PitchClassCoordinates(0))
+        );
+        assert_eq!(
+            a().coordinates(),
+            PitchCoordinates::PitchClass(PitchClassCoordinates(3))
+        );
+        assert_eq!(
+            cs().coordinates(),
+            PitchCoordinates::PitchClass(PitchClassCoordinates(7))
+        );
+        assert_eq!(
+            cb().coordinates(),
+            PitchCoordinates::PitchClass(PitchClassCoordinates(-7))
+        );
         // notes
-        assert_eq!(c4().coordinates(), PitchCoordinates::Note(NoteCoordinates(0, 4)));
-        assert_eq!(a4().coordinates(), PitchCoordinates::Note(NoteCoordinates(3, 3)));
+        assert_eq!(
+            c4().coordinates(),
+            PitchCoordinates::Note(NoteCoordinates(0, 4))
+        );
+        assert_eq!(
+            a4().coordinates(),
+            PitchCoordinates::Note(NoteCoordinates(3, 3))
+        );
         // intervals (direction is folded into the sign, like the TS version)
-        assert_eq!(p5().coordinates(), PitchCoordinates::Note(NoteCoordinates(1, 0)));
+        assert_eq!(
+            p5().coordinates(),
+            PitchCoordinates::Note(NoteCoordinates(1, 0))
+        );
         // TS expects [-1, -0]; Rust integers have no negative zero, so this is 0.
-        assert_eq!(p_5().coordinates(), PitchCoordinates::Note(NoteCoordinates(-1, 0)));
+        assert_eq!(
+            p_5().coordinates(),
+            PitchCoordinates::Note(NoteCoordinates(-1, 0))
+        );
     }
 
     #[test]
     fn test_from_coordinates() {
-        assert_eq!(Pitch::from(PitchCoordinates::PitchClass(PitchClassCoordinates(0))), c());
-        assert_eq!(Pitch::from(PitchCoordinates::PitchClass(PitchClassCoordinates(7))), cs());
+        assert_eq!(
+            Pitch::from(PitchCoordinates::PitchClass(PitchClassCoordinates(0))),
+            c()
+        );
+        assert_eq!(
+            Pitch::from(PitchCoordinates::PitchClass(PitchClassCoordinates(7))),
+            cs()
+        );
     }
 
     #[test]
