@@ -177,6 +177,7 @@ fn parse(note_name: &str) -> Option<Note> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pitch::NoteCoordinates;
 
     // Build a NoteTokens tuple from &str, so the tokenize asserts read like the TS.
     fn tok(a: &str, b: &str, c: &str, d: &str) -> NoteTokens {
@@ -223,7 +224,7 @@ mod tests {
         assert_eq!(n.step, 5);
         assert_eq!(n.alt, 0);
         assert_eq!(n.oct, Some(4));
-        assert_eq!(n.coord, PitchCoordinates::Note(3, 3));
+        assert_eq!(n.coord, PitchCoordinates::Note(NoteCoordinates(3, 3)));
         assert_eq!(n.height, 69);
         assert_eq!(n.chroma, 9);
         assert_eq!(n.midi, Some(69));
