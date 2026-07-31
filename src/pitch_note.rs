@@ -306,7 +306,13 @@ mod tests {
     fn test_try_from_str_error() {
         assert!(Note::try_from("A4").is_ok());
         let err = Note::try_from("x").unwrap_err();
-        assert_eq!(err, ParseNoteError { input: "x".into() });
+        assert_eq!(
+            err,
+            TonalParseError {
+                entity: "note".into(),
+                input: "x".into()
+            }
+        );
     }
 
     #[test]

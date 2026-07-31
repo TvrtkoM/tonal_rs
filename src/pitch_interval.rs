@@ -80,11 +80,14 @@ impl Quality {
         } else if alt > 0 {
             Quality::Augmented(alt as u8)
         } else {
-            Quality::Diminished(if ty == IntervalType::Perfectable {
-                alt as u8
+            // alt is negative here; the number of `d`s is its magnitude
+            // (one less for majorable, since diminished sits below minor).
+            let count = if ty == IntervalType::Perfectable {
+                -alt
             } else {
-                alt as u8 + 1
-            })
+                -alt - 1
+            };
+            Quality::Diminished(count as u8)
         }
     }
 }
@@ -281,4 +284,119 @@ fn pitch_name(p: &Pitch) -> String {
     };
     let ty = TYPES[step];
     format!("{}{}{}", dir, num, Quality::from_alt(ty, alt))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // interval(i).name for each space-separated interval, rejoined (all valid).
+    fn names(s: &str) -> String {
+        s.split(' ')
+            .map(|i| interval(i).unwrap().name)
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    // interval(i).q rendered to string, for each space-separated interval.
+    fn qs(s: &str) -> Vec<String> {
+        s.split(' ')
+            .map(|i| interval(i).unwrap().q.to_string())
+            .collect()
+    }
+
+    fn alts(s: &str) -> Vec<i32> {
+        s.split(' ').map(|i| interval(i).unwrap().alt).collect()
+    }
+
+    fn simples(s: &str) -> Vec<i32> {
+        s.split(' ').map(|i| interval(i).unwrap().simple).collect()
+    }
+
+    // interval from pitch props, returning the name (or None if invalid).
+    fn from_pitch(step: usize, alt: i32, oct: Option<i32>, dir: Option<Direction>) -> Option<String> {
+        Interval::try_from(&Pitch { step, alt, oct, dir })
+            .ok()
+            .map(|i| i.name)
+    }
+
+    #[test]
+    fn test_tokenize() {
+        assert_eq!(tokenize_interval("-2M"), ("-2".into(), "M".into()));
+        assert_eq!(tokenize_interval("M-3"), ("-3".into(), "M".into()));
+    }
+
+    #[test]
+    fn test_properties() {
+        let i = interval("4d").unwrap();
+        assert_eq!(i.name, "4d");
+        assert_eq!(i.num, 4);
+        assert_eq!(i.q, Quality::Diminished(1));
+        assert_eq!(i.q.to_string(), "d");
+        assert_eq!(i.typ, IntervalType::Perfectable);
+        assert_eq!(i.alt, -1);
+        assert_eq!(i.chroma, 4);
+        assert_eq!(i.dir, Direction::Up);
+        assert_eq!(i.coord, NoteCoordinates(-8, 5));
+        assert_eq!(i.oct, 0);
+        assert_eq!(i.semitones, 4);
+        assert_eq!(i.simple, 4);
+        assert_eq!(i.step, 3);
+    }
+
+    #[test]
+    fn test_accepts_interval_as_parameter() {
+        // TS: interval(interval("5P")) === interval("5P"). Re-parse its own name.
+        let p5 = interval("5P").unwrap();
+        assert_eq!(interval(&p5.name), interval("5P"));
+    }
+
+    #[test]
+    fn test_name() {
+        assert_eq!(names("1P 2M 3M 4P 5P 6M 7M"), "1P 2M 3M 4P 5P 6M 7M");
+        assert_eq!(names("P1 M2 M3 P4 P5 M6 M7"), "1P 2M 3M 4P 5P 6M 7M");
+        assert_eq!(names("-1P -2M -3M -4P -5P -6M -7M"), "-1P -2M -3M -4P -5P -6M -7M");
+        assert_eq!(names("P-1 M-2 M-3 P-4 P-5 M-6 M-7"), "-1P -2M -3M -4P -5P -6M -7M");
+        assert!(interval("not-an-interval").is_none());
+        assert!(interval("2P").is_none());
+    }
+
+    #[test]
+    fn test_q() {
+        assert_eq!(qs("1dd 1d 1P 1A 1AA"), ["dd", "d", "P", "A", "AA"]);
+        assert_eq!(qs("2dd 2d 2m 2M 2A 2AA"), ["dd", "d", "m", "M", "A", "AA"]);
+    }
+
+    #[test]
+    fn test_alt() {
+        assert_eq!(alts("1dd 2dd 3dd 4dd"), [-2, -3, -3, -2]);
+    }
+
+    #[test]
+    fn test_simple() {
+        assert_eq!(simples("1P 2M 3M 4P"), [1, 2, 3, 4]);
+        assert_eq!(simples("8P 9M 10M 11P"), [8, 2, 3, 4]);
+        assert_eq!(simples("-8P -9M -10M -11P"), [-8, -2, -3, -4]);
+    }
+
+    #[test]
+    fn test_from_pitch_props() {
+        use Direction::*;
+        assert_eq!(from_pitch(0, 0, None, Some(Up)).as_deref(), Some("1P"));
+        assert_eq!(from_pitch(0, -2, None, Some(Up)).as_deref(), Some("1dd"));
+        assert_eq!(from_pitch(1, 1, None, Some(Up)).as_deref(), Some("2A"));
+        assert_eq!(from_pitch(2, -2, None, Some(Up)).as_deref(), Some("3d"));
+        assert_eq!(from_pitch(1, 1, None, Some(Down)).as_deref(), Some("-2A"));
+        // no dir -> not an interval
+        assert!(from_pitch(1000, 0, None, None).is_none());
+    }
+
+    #[test]
+    fn test_from_pitch_props_with_octave() {
+        use Direction::*;
+        assert_eq!(from_pitch(0, 0, Some(0), Some(Up)).as_deref(), Some("1P"));
+        assert_eq!(from_pitch(0, -1, Some(1), Some(Down)).as_deref(), Some("-8d"));
+        assert_eq!(from_pitch(0, 1, Some(2), Some(Down)).as_deref(), Some("-15A"));
+        assert_eq!(from_pitch(1, -1, Some(1), Some(Down)).as_deref(), Some("-9m"));
+    }
 }
