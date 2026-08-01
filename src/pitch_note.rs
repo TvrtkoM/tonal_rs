@@ -7,7 +7,7 @@ use std::sync::LazyLock;
 
 type NoteTokens = (String, String, String, String);
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Note {
     pub(crate) step: usize,
     pub(crate) alt: i32,
@@ -94,6 +94,34 @@ impl TryFrom<&str> for Note {
             entity: String::from("note"),
             input: s.to_string(),
         })
+    }
+}
+
+pub trait IntoNote {
+    fn into_note(self) -> Option<Note>;
+}
+
+impl IntoNote for &str {
+    fn into_note(self) -> Option<Note> {
+        note(self)
+    }
+}
+
+impl IntoNote for Note {
+    fn into_note(self) -> Option<Note> {
+        Some(self)
+    }
+}
+
+impl IntoNote for &Note {
+    fn into_note(self) -> Option<Note> {
+        Some(self.clone())
+    }
+}
+
+impl IntoNote for &Pitch {
+    fn into_note(self) -> Option<Note> {
+        Note::try_from(self).ok()
     }
 }
 

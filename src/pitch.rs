@@ -30,14 +30,21 @@ pub enum Direction {
     Down = -1,
 }
 
-type Fifths = i32;
-type Octaves = i32;
+pub type Fifths = i32;
+pub type Octaves = i32;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PitchClassCoordinates(pub Fifths);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NoteCoordinates(pub Fifths, pub Octaves);
+
+impl From<NoteCoordinates> for (Fifths, Octaves) {
+    fn from(value: NoteCoordinates) -> Self {
+        let NoteCoordinates(fifths, octaves) = value;
+        (fifths, octaves)
+    }
+}
 
 // only used as input to conversion e.g. PitchCoordinates to Pitch
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -178,9 +185,9 @@ fn unaltered(f: i32) -> usize {
     (if i < 0 { 7 + i } else { i }) as usize
 }
 
-impl From<PitchCoordinates> for (i32, Option<i32>, Option<Direction>) {
-    fn from(coord: PitchCoordinates) -> Self {
-        match coord {
+impl From<&PitchCoordinates> for (i32, Option<i32>, Option<Direction>) {
+    fn from(coord: &PitchCoordinates) -> Self {
+        match *coord {
             PitchCoordinates::PitchClass(PitchClassCoordinates(f)) => (f, None, None),
             PitchCoordinates::Note(NoteCoordinates(f, o)) => (f, Some(o), None),
             PitchCoordinates::Interval(IntervalCoordinates(f, o, d)) => (f, Some(o), Some(d)),
@@ -188,8 +195,18 @@ impl From<PitchCoordinates> for (i32, Option<i32>, Option<Direction>) {
     }
 }
 
-impl From<PitchCoordinates> for Pitch {
-    fn from(coord: PitchCoordinates) -> Self {
+impl From<(i32, Option<i32>, Option<Direction>)> for PitchCoordinates {
+    fn from((f, oct, dir): (i32, Option<i32>, Option<Direction>)) -> Self {
+        match (oct, dir) {
+            (Some(o), Some(d)) => PitchCoordinates::Interval(IntervalCoordinates(f, o, d)),
+            (Some(o), None) => PitchCoordinates::Note(NoteCoordinates(f, o)),
+            (None, _) => PitchCoordinates::PitchClass(PitchClassCoordinates(f)),
+        }
+    }
+}
+
+impl From<&PitchCoordinates> for Pitch {
+    fn from(coord: &PitchCoordinates) -> Self {
         let (fifths, oct, dir) = coord.into();
         let step = FIFTHS_TO_STEPS[unaltered(fifths)];
         let alt = (fifths + 1).div_euclid(7);
@@ -369,11 +386,11 @@ mod tests {
     #[test]
     fn test_from_coordinates() {
         assert_eq!(
-            Pitch::from(PitchCoordinates::PitchClass(PitchClassCoordinates(0))),
+            Pitch::from(&PitchCoordinates::PitchClass(PitchClassCoordinates(0))),
             c()
         );
         assert_eq!(
-            Pitch::from(PitchCoordinates::PitchClass(PitchClassCoordinates(7))),
+            Pitch::from(&PitchCoordinates::PitchClass(PitchClassCoordinates(7))),
             cs()
         );
     }

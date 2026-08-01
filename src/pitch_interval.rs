@@ -121,7 +121,7 @@ const TYPES: [IntervalType; 7] = [
     IntervalType::Majorable,   // 7  seventh
 ];
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Interval {
     pub(crate) step: usize,
     pub(crate) alt: i32,
@@ -158,6 +158,9 @@ pub struct IntervalParts<'a> {
 }
 
 impl Interval {
+    pub fn coord(&self) -> NoteCoordinates {
+        self.coord
+    }
     pub fn parts(&self) -> IntervalParts<'_> {
         IntervalParts {
             step: self.step,
@@ -204,6 +207,34 @@ impl TryFrom<&str> for Interval {
             entity: String::from("interval"),
             input: s.to_string(),
         })
+    }
+}
+
+pub trait IntoInterval {
+    fn into_interval(self) -> Option<Interval>;
+}
+
+impl IntoInterval for &str {
+    fn into_interval(self) -> Option<Interval> {
+        interval(self)
+    }
+}
+
+impl IntoInterval for Interval {
+    fn into_interval(self) -> Option<Interval> {
+        Some(self)
+    }
+}
+
+impl IntoInterval for &Interval {
+    fn into_interval(self) -> Option<Interval> {
+        Some(self.clone())
+    }
+}
+
+impl IntoInterval for &Pitch {
+    fn into_interval(self) -> Option<Interval> {
+        Interval::try_from(self).ok()
     }
 }
 
@@ -288,7 +319,7 @@ fn pitch_name(p: &Pitch) -> String {
 }
 
 pub(crate) fn coord_to_interval(
-    coord: PitchCoordinates,
+    coord: &PitchCoordinates,
     force_descending: bool,
 ) -> Option<Interval> {
     let (f, o, _) = coord.into();
@@ -299,7 +330,7 @@ pub(crate) fn coord_to_interval(
     } else {
         IntervalCoordinates(f, o, Direction::Up)
     };
-    let p: Pitch = PitchCoordinates::Interval(i_coord).into();
+    let p: Pitch = (&PitchCoordinates::Interval(i_coord)).into();
     Interval::try_from(&p).ok()
 }
 
