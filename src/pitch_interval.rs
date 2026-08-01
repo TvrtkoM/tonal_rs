@@ -4,7 +4,8 @@ use std::sync::LazyLock;
 use crate::{
     error::TonalParseError,
     pitch::{
-        Direction, Named, NoteCoordinates, Pitch, PitchCoordinates, chroma, coordinates, semitones,
+        Direction, IntervalCoordinates, Named, NoteCoordinates, Pitch, PitchCoordinates, chroma,
+        coordinates, semitones,
     },
 };
 
@@ -286,6 +287,22 @@ fn pitch_name(p: &Pitch) -> String {
     format!("{}{}{}", dir, num, Quality::from_alt(ty, alt))
 }
 
+pub(crate) fn coord_to_interval(
+    coord: PitchCoordinates,
+    force_descending: bool,
+) -> Option<Interval> {
+    let (f, o, _) = coord.into();
+    let o = o.unwrap_or(0);
+    let is_descending = f * 7 + o * 12 < 0;
+    let i_coord = if force_descending || is_descending {
+        IntervalCoordinates(-f, -o, Direction::Down)
+    } else {
+        IntervalCoordinates(f, o, Direction::Up)
+    };
+    let p: Pitch = PitchCoordinates::Interval(i_coord).into();
+    Interval::try_from(&p).ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,10 +331,20 @@ mod tests {
     }
 
     // interval from pitch props, returning the name (or None if invalid).
-    fn from_pitch(step: usize, alt: i32, oct: Option<i32>, dir: Option<Direction>) -> Option<String> {
-        Interval::try_from(&Pitch { step, alt, oct, dir })
-            .ok()
-            .map(|i| i.name)
+    fn from_pitch(
+        step: usize,
+        alt: i32,
+        oct: Option<i32>,
+        dir: Option<Direction>,
+    ) -> Option<String> {
+        Interval::try_from(&Pitch {
+            step,
+            alt,
+            oct,
+            dir,
+        })
+        .ok()
+        .map(|i| i.name)
     }
 
     #[test]
@@ -355,8 +382,14 @@ mod tests {
     fn test_name() {
         assert_eq!(names("1P 2M 3M 4P 5P 6M 7M"), "1P 2M 3M 4P 5P 6M 7M");
         assert_eq!(names("P1 M2 M3 P4 P5 M6 M7"), "1P 2M 3M 4P 5P 6M 7M");
-        assert_eq!(names("-1P -2M -3M -4P -5P -6M -7M"), "-1P -2M -3M -4P -5P -6M -7M");
-        assert_eq!(names("P-1 M-2 M-3 P-4 P-5 M-6 M-7"), "-1P -2M -3M -4P -5P -6M -7M");
+        assert_eq!(
+            names("-1P -2M -3M -4P -5P -6M -7M"),
+            "-1P -2M -3M -4P -5P -6M -7M"
+        );
+        assert_eq!(
+            names("P-1 M-2 M-3 P-4 P-5 M-6 M-7"),
+            "-1P -2M -3M -4P -5P -6M -7M"
+        );
         assert!(interval("not-an-interval").is_none());
         assert!(interval("2P").is_none());
     }
@@ -395,8 +428,17 @@ mod tests {
     fn test_from_pitch_props_with_octave() {
         use Direction::*;
         assert_eq!(from_pitch(0, 0, Some(0), Some(Up)).as_deref(), Some("1P"));
-        assert_eq!(from_pitch(0, -1, Some(1), Some(Down)).as_deref(), Some("-8d"));
-        assert_eq!(from_pitch(0, 1, Some(2), Some(Down)).as_deref(), Some("-15A"));
-        assert_eq!(from_pitch(1, -1, Some(1), Some(Down)).as_deref(), Some("-9m"));
+        assert_eq!(
+            from_pitch(0, -1, Some(1), Some(Down)).as_deref(),
+            Some("-8d")
+        );
+        assert_eq!(
+            from_pitch(0, 1, Some(2), Some(Down)).as_deref(),
+            Some("-15A")
+        );
+        assert_eq!(
+            from_pitch(1, -1, Some(1), Some(Down)).as_deref(),
+            Some("-9m")
+        );
     }
 }

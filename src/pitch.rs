@@ -178,13 +178,19 @@ fn unaltered(f: i32) -> usize {
     (if i < 0 { 7 + i } else { i }) as usize
 }
 
-impl From<PitchCoordinates> for Pitch {
+impl From<PitchCoordinates> for (i32, Option<i32>, Option<Direction>) {
     fn from(coord: PitchCoordinates) -> Self {
-        let (fifths, oct, dir) = match coord {
+        match coord {
             PitchCoordinates::PitchClass(PitchClassCoordinates(f)) => (f, None, None),
             PitchCoordinates::Note(NoteCoordinates(f, o)) => (f, Some(o), None),
             PitchCoordinates::Interval(IntervalCoordinates(f, o, d)) => (f, Some(o), Some(d)),
-        };
+        }
+    }
+}
+
+impl From<PitchCoordinates> for Pitch {
+    fn from(coord: PitchCoordinates) -> Self {
+        let (fifths, oct, dir) = coord.into();
         let step = FIFTHS_TO_STEPS[unaltered(fifths)];
         let alt = (fifths + 1).div_euclid(7);
         if let Some(o) = oct {
