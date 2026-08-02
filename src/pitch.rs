@@ -80,7 +80,7 @@ pub fn semitones(step: usize, alt: i32, oct: i32, dir: Option<Direction>) -> i32
 
 pub fn chroma(step: usize, alt: i32, dir: Option<Direction>) -> i32 {
     let dir_val = dir.map_or(1, |d| d as i32);
-    (((dir_val * (STEPS[step] + alt)) % 12) + 12) % 12
+    (dir_val * (STEPS[step] + alt)).rem_euclid(12)
 }
 
 pub fn coordinates(
@@ -181,8 +181,7 @@ impl Named for Pitch {
 
 // return index of fifth in unaltered array FIFTHS_TO_STEPS
 fn unaltered(f: i32) -> usize {
-    let i = (f + 1) % 7;
-    (if i < 0 { 7 + i } else { i }) as usize
+    (f + 1).rem_euclid(7) as usize
 }
 
 impl From<&PitchCoordinates> for (i32, Option<i32>, Option<Direction>) {

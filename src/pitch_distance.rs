@@ -65,11 +65,7 @@ pub(crate) fn tonic_intervals_transposer(
         let Some(tonic) = tonic else {
             return String::new();
         };
-        let index = if normalized < 0 {
-            (len - (-normalized % len)) % len
-        } else {
-            normalized % len
-        } as usize;
+        let index = normalized.rem_euclid(len) as usize;
         let octaves = normalized.div_euclid(len);
         let root = transpose_with_coord(tonic, (0, octaves));
         transpose(root.as_str(), intervals[index])
