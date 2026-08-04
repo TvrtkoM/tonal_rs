@@ -1,3 +1,4 @@
+pub mod abc_notation;
 pub mod collection;
 pub mod error;
 pub mod midi;
