@@ -1,4 +1,7 @@
-use std::sync::LazyLock;
+use std::{
+    collections::HashMap,
+    sync::{LazyLock, Mutex},
+};
 
 use regex::Regex;
 
@@ -303,8 +306,28 @@ fn chroma_rotations(chroma: &str) -> Vec<String> {
         .collect()
 }
 
+static CACHE: LazyLock<Mutex<HashMap<String, Pcset>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
 fn chroma_to_pcset(chroma: &str) -> Option<Pcset> {
+    if let Some(cached) = CACHE.lock().unwrap().get(chroma) {
+        return Some(cached.clone());
+    }
+
+    let pcset = chroma_to_pcset_uncached(chroma)?;
+    CACHE
+        .lock()
+        .unwrap()
+        .insert(String::from(chroma), pcset.clone());
+    Some(pcset)
+}
+
+fn chroma_to_pcset_uncached(chroma: &str) -> Option<Pcset> {
     let set_num = chroma_to_number(chroma);
+    if set_num == 0 {
+        return None;
+    }
+
     let normalized_num: i32 = chroma_rotations(chroma)
         .iter()
         .filter_map(|c| {
