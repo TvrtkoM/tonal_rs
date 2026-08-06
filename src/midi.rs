@@ -1,6 +1,6 @@
 use std::f32::consts::LN_2;
 
-use crate::pitch_note::IntoNote;
+use crate::pitch_note::AsNote;
 
 pub trait ToMidi {
     fn to_midi(&self) -> Option<i32>;
@@ -16,7 +16,7 @@ impl ToMidi for &str {
     fn to_midi(&self) -> Option<i32> {
         match self.trim().parse::<f64>() {
             Ok(n) => (0.0..=127.0).contains(&n).then_some(n as i32),
-            _ => self.into_note().and_then(|n| n.midi),
+            _ => self.note().and_then(|n| n.midi),
         }
     }
 }

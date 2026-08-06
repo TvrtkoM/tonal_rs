@@ -9,8 +9,8 @@ use crate::{
     collection::{range, rotated},
     error::TonalParseError,
     note::transpose,
-    pitch_interval::{Interval, IntoInterval},
-    pitch_note::{IntoNote, Note},
+    pitch_interval::{AsInterval, Interval},
+    pitch_note::{AsNote, Note},
 };
 
 #[derive(Debug, Clone)]
@@ -246,7 +246,7 @@ where
 {
     let s = set.pcset_chroma();
 
-    move |note: &str| match (s, note.into_note()) {
+    move |note: &str| match (s, note.note()) {
         (Some(s), Some(n)) => s.as_bytes().get(n.chroma as usize) == Some(&b'1'),
         _ => false,
     }
@@ -333,9 +333,9 @@ impl PcChroma for Interval {
 impl PcChroma for &str {
     fn pc_chroma(&self) -> Option<i32> {
         (*self)
-            .into_note()
+            .note()
             .map(|n| n.chroma)
-            .or_else(|| (*self).into_interval().map(|i| i.chroma))
+            .or_else(|| (*self).interval().map(|i| i.chroma))
     }
 }
 

@@ -3,39 +3,39 @@ use std::cmp::Ordering;
 use crate::{
     midi::{ToNoteNameOptions, freq_to_midi, midi_to_note_name},
     pitch_distance::transpose_with_coord,
-    pitch_note::{IntoNote, Note},
+    pitch_note::{AsNote, Note},
 };
 
-const NAMES: [char; 7] = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const NAMES: [&str; 7] = ["C", "D", "E", "F", "G", "A", "B"];
 
 pub use crate::pitch_note::note as get;
 
-pub fn name<T: IntoNote>(note: T) -> String {
-    note.into_note().map(|n| n.name).unwrap_or_default()
+pub fn name<T: AsNote>(note: T) -> &'static str {
+    note.note().map(|n| n.name.as_str()).unwrap_or("")
 }
 
-pub fn pitch_class<T: IntoNote>(note: T) -> String {
-    note.into_note().map(|n| n.pc).unwrap_or_default()
+pub fn pitch_class<T: AsNote>(note: T) -> &'static str {
+    note.note().map(|n| n.pc.as_str()).unwrap_or("")
 }
 
-pub fn accidentals<T: IntoNote>(note: T) -> String {
-    note.into_note().map(|n| n.acc).unwrap_or_default()
+pub fn accidentals<T: AsNote>(note: T) -> &'static str {
+    note.note().map(|n| n.acc.as_str()).unwrap_or("")
 }
 
-pub fn octave<T: IntoNote>(note: T) -> Option<i32> {
-    note.into_note()?.oct
+pub fn octave<T: AsNote>(note: T) -> Option<i32> {
+    note.note()?.oct
 }
 
-pub fn midi<T: IntoNote>(note: T) -> Option<i32> {
-    note.into_note()?.midi
+pub fn midi<T: AsNote>(note: T) -> Option<i32> {
+    note.note()?.midi
 }
 
-pub fn freq<T: IntoNote>(note: T) -> Option<f32> {
-    note.into_note()?.freq
+pub fn freq<T: AsNote>(note: T) -> Option<f32> {
+    note.note()?.freq
 }
 
-pub fn chroma<T: IntoNote>(note: T) -> Option<i32> {
-    note.into_note().map(|n| n.chroma)
+pub fn chroma<T: AsNote>(note: T) -> Option<i32> {
+    note.note().map(|n| n.chroma)
 }
 
 pub fn from_midi(midi: i32) -> String {
@@ -113,35 +113,38 @@ pub fn descending(a: &Note, b: &Note) -> Ordering {
     b.height.cmp(&a.height)
 }
 
-fn only_notes<T: IntoNote + Clone>(vec: &[T]) -> Vec<Note> {
-    vec.iter().filter_map(|n| n.clone().into_note()).collect()
+fn only_notes<T: AsNote + Clone>(vec: &[T]) -> Vec<&'static Note> {
+    vec.iter().filter_map(|n| n.clone().note()).collect()
 }
 
-pub fn names<T: IntoNote + Clone>(vec: Option<&[T]>) -> Vec<String> {
+pub fn names<T: AsNote + Clone>(vec: Option<&[T]>) -> Vec<&'static str> {
     let Some(vec) = vec else {
-        return NAMES.iter().map(|&c| String::from(c)).collect();
+        return NAMES.to_vec();
     };
-    only_notes(vec).into_iter().map(|n| n.name).collect()
+    only_notes(vec)
+        .into_iter()
+        .map(|n| n.name.as_str())
+        .collect()
 }
 
-pub fn sorted_names<T: IntoNote + Clone>(
+pub fn sorted_names<T: AsNote + Clone>(
     notes: &[T],
     comparator: Option<NoteComparator>,
-) -> Vec<String> {
+) -> Vec<&'static str> {
     let comparator = comparator.unwrap_or(ascending);
     let mut notes = only_notes(notes);
-    notes.sort_by(comparator);
-    notes.into_iter().map(|n| n.name).collect()
+    notes.sort_by(|a, b| comparator(a, b));
+    notes.into_iter().map(|n| n.name.as_str()).collect()
 }
 
-pub fn sorted_uniq_names<T: IntoNote + Clone>(notes: &[T]) -> Vec<String> {
+pub fn sorted_uniq_names<T: AsNote + Clone>(notes: &[T]) -> Vec<&'static str> {
     let mut names = sorted_names(notes, Some(ascending));
     names.dedup();
     names
 }
 
-pub fn simplify<T: IntoNote>(note: T) -> String {
-    let Some(note) = note.into_note() else {
+pub fn simplify<T: AsNote>(note: T) -> String {
+    let Some(note) = note.note() else {
         return String::new();
     };
 
@@ -157,12 +160,12 @@ pub fn simplify<T: IntoNote>(note: T) -> String {
 }
 
 pub fn enharmonic(note: &str, dest: Option<&str>) -> String {
-    let Some(src) = note.into_note() else {
+    let Some(src) = note.note() else {
         return String::new();
     };
 
     let dest = match dest {
-        Some(d) => d.into_note(),
+        Some(d) => d.note(),
         None => midi_to_note_name(
             src.midi.unwrap_or(src.chroma),
             Some(ToNoteNameOptions {
@@ -170,7 +173,7 @@ pub fn enharmonic(note: &str, dest: Option<&str>) -> String {
                 pitch_class: Some(true),
             }),
         )
-        .into_note(),
+        .note(),
     };
 
     let Some(dest) = dest else {
@@ -182,7 +185,7 @@ pub fn enharmonic(note: &str, dest: Option<&str>) -> String {
     }
 
     let Some(src_oct) = src.oct else {
-        return dest.pc;
+        return dest.pc.clone();
     };
 
     let src_chroma = src.chroma - src.alt;
@@ -202,7 +205,6 @@ pub fn enharmonic(note: &str, dest: Option<&str>) -> String {
 mod tests {
     use super::*;
 
-    // split a space-separated string into words — mirrors the TS `$` helper.
     fn words(s: &str) -> Vec<&str> {
         s.split(' ').collect()
     }
@@ -266,8 +268,6 @@ mod tests {
     #[test]
     fn test_names() {
         assert_eq!(names::<&str>(None), words("C D E F G A B"));
-        // TS passes a mixed array with numbers/objects/null; here just note-ish
-        // strings — the invalid ones are filtered out.
         assert_eq!(
             names(Some(&["fx", "bb", "nothing", "x"][..])),
             words("F## Bb")
@@ -276,7 +276,10 @@ mod tests {
 
     #[test]
     fn test_sorted_names() {
-        assert_eq!(sorted_names(&words("c f g a b h j"), None), words("C F G A B"));
+        assert_eq!(
+            sorted_names(&words("c f g a b h j"), None),
+            words("C F G A B")
+        );
         assert_eq!(
             sorted_names(&words("c f g a b h j j h b a g f c"), None),
             words("C C F F G G A A B B")
@@ -319,10 +322,7 @@ mod tests {
     fn test_transpose_by() {
         assert_eq!(transpose_by("5P")("C4"), "G4");
         let f = transpose_by("5P");
-        assert_eq!(
-            ["C", "D", "E"].map(&f),
-            ["G", "A", "B"].map(String::from)
-        );
+        assert_eq!(["C", "D", "E"].map(&f), ["G", "A", "B"].map(String::from));
     }
 
     #[test]
