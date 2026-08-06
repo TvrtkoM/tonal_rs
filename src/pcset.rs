@@ -59,7 +59,7 @@ impl TryFrom<&str> for Pcset {
     type Error = TonalParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         if is_chroma(value) {
-            chroma_to_pcset(value).ok_or(TonalParseError {
+            chroma_to_pcset(value).cloned().ok_or(TonalParseError {
                 entity: String::from("pcset"),
                 input: String::from(value),
             })
@@ -72,48 +72,37 @@ impl TryFrom<&str> for Pcset {
     }
 }
 
-pub trait IntoPcset {
-    fn into_pcset(self) -> Option<Pcset>;
+pub trait AsPcset {
+    /// Resolve to the cached, program-lifetime `Pcset` for this input.
+    fn pcset(self) -> Option<&'static Pcset>;
 
     fn pcset_num(self) -> i32
     where
         Self: Sized,
     {
-        self.into_pcset().map_or(0, |p| p.set_num)
+        self.pcset().map_or(0, |p| p.set_num)
     }
 
-    fn pcset_chroma(self) -> Option<String>
+    fn pcset_chroma(self) -> Option<&'static str>
     where
         Self: Sized,
     {
-        Some(self.into_pcset()?.chroma)
+        Some(self.pcset()?.chroma.as_str())
     }
 }
 
-impl IntoPcset for &str {
-    fn into_pcset(self) -> Option<Pcset> {
-        self.try_into().ok()
-    }
-
-    fn pcset_num(self) -> i32 {
+impl AsPcset for &str {
+    fn pcset(self) -> Option<&'static Pcset> {
         if is_chroma(self) {
-            chroma_to_number(self)
-        } else {
-            0
-        }
-    }
-
-    fn pcset_chroma(self) -> Option<String> {
-        if is_chroma(self) {
-            Some(String::from(self))
+            chroma_to_pcset(self)
         } else {
             None
         }
     }
 }
 
-impl IntoPcset for i32 {
-    fn into_pcset(self) -> Option<Pcset> {
+impl AsPcset for i32 {
+    fn pcset(self) -> Option<&'static Pcset> {
         if !is_pcset_num(self) {
             None
         } else {
@@ -121,46 +110,24 @@ impl IntoPcset for i32 {
             chroma_to_pcset(&chroma)
         }
     }
-
-    fn pcset_num(self) -> i32 {
-        if is_pcset_num(self) { self } else { 0 }
-    }
-
-    fn pcset_chroma(self) -> Option<String> {
-        if is_pcset_num(self) {
-            Some(set_num_to_chroma(self))
-        } else {
-            None
-        }
-    }
 }
 
-impl IntoPcset for &Pcset {
-    fn into_pcset(self) -> Option<Pcset> {
-        Some(self.clone())
+impl AsPcset for &Pcset {
+    fn pcset(self) -> Option<&'static Pcset> {
+        // A caller-owned `Pcset` isn't `'static`; look up the cached one by its
+        // chroma so callers still get a program-lifetime reference.
+        chroma_to_pcset(&self.chroma)
     }
 
     fn pcset_num(self) -> i32 {
         self.set_num
     }
-
-    fn pcset_chroma(self) -> Option<String> {
-        Some(self.chroma.clone())
-    }
 }
 
-impl<T: PcChroma> IntoPcset for &[T] {
-    fn into_pcset(self) -> Option<Pcset> {
+impl<T: PcChroma> AsPcset for &[T] {
+    fn pcset(self) -> Option<&'static Pcset> {
         let chroma = list_to_chroma(self);
         chroma_to_pcset(&chroma)
-    }
-
-    fn pcset_num(self) -> i32 {
-        chroma_to_number(&list_to_chroma(self))
-    }
-
-    fn pcset_chroma(self) -> Option<String> {
-        Some(list_to_chroma(self))
     }
 }
 
@@ -197,31 +164,30 @@ fn chroma_to_intervals(chroma: &str) -> Vec<String> {
         .collect()
 }
 
-pub fn get<T: IntoPcset>(set: T) -> Option<Pcset> {
-    set.into_pcset()
+pub fn get<T: AsPcset>(set: T) -> Option<&'static Pcset> {
+    set.pcset()
 }
 
-pub fn num<T: IntoPcset>(set: T) -> i32 {
+pub fn num<T: AsPcset>(set: T) -> i32 {
     set.pcset_num()
 }
 
-pub fn chroma<T: IntoPcset>(set: T) -> String {
-    set.pcset_chroma()
-        .unwrap_or_else(|| String::from(EMPTY_CHROMA))
+pub fn chroma<T: AsPcset>(set: T) -> &'static str {
+    set.pcset_chroma().unwrap_or(EMPTY_CHROMA)
 }
 
-pub fn intervals<T: IntoPcset>(set: T) -> Vec<String> {
-    set.into_pcset().map(|p| p.intervals).unwrap_or_default()
+pub fn intervals<T: AsPcset>(set: T) -> &'static [String] {
+    set.pcset().map(|p| p.intervals.as_slice()).unwrap_or(&[])
 }
 
-pub fn notes<T: IntoPcset>(set: T) -> Vec<String> {
-    let Some(pcset) = set.into_pcset() else {
+pub fn notes<T: AsPcset>(set: T) -> Vec<String> {
+    let Some(pcset) = set.pcset() else {
         return vec![];
     };
 
     pcset
         .intervals
-        .into_iter()
+        .iter()
         .map(|ivl| transpose("C", ivl.as_str()))
         .collect()
 }
@@ -233,8 +199,8 @@ pub fn chromas() -> Vec<String> {
         .collect()
 }
 
-pub fn modes<T: IntoPcset>(set: T, normalize: bool) -> Vec<String> {
-    let Some(pcs) = set.into_pcset() else {
+pub fn modes<T: AsPcset>(set: T, normalize: bool) -> Vec<String> {
+    let Some(pcs) = set.pcset() else {
         return vec![];
     };
     let binary = pcs.chroma.chars().collect::<Vec<char>>();
@@ -250,11 +216,11 @@ pub fn modes<T: IntoPcset>(set: T, normalize: bool) -> Vec<String> {
         .collect()
 }
 
-pub fn is_equal<T: IntoPcset>(s1: T, s2: T) -> bool {
+pub fn is_equal<T: AsPcset>(s1: T, s2: T) -> bool {
     s1.pcset_num() == s2.pcset_num()
 }
 
-pub fn is_subset_of<T: IntoPcset>(set: T) -> impl Fn(T) -> bool {
+pub fn is_subset_of<T: AsPcset>(set: T) -> impl Fn(T) -> bool {
     let s = set.pcset_num();
 
     move |notes: T| -> bool {
@@ -264,7 +230,7 @@ pub fn is_subset_of<T: IntoPcset>(set: T) -> impl Fn(T) -> bool {
     }
 }
 
-pub fn is_superset_of<T: IntoPcset>(set: T) -> impl Fn(T) -> bool {
+pub fn is_superset_of<T: AsPcset>(set: T) -> impl Fn(T) -> bool {
     let s = set.pcset_num();
 
     move |notes: T| -> bool {
@@ -276,17 +242,17 @@ pub fn is_superset_of<T: IntoPcset>(set: T) -> impl Fn(T) -> bool {
 
 pub fn is_note_included_in<T>(set: T) -> impl Fn(&str) -> bool
 where
-    T: IntoPcset,
+    T: AsPcset,
 {
     let s = set.pcset_chroma();
 
-    move |note: &str| match (&s, note.into_note()) {
+    move |note: &str| match (s, note.into_note()) {
         (Some(s), Some(n)) => s.as_bytes().get(n.chroma as usize) == Some(&b'1'),
         _ => false,
     }
 }
 
-pub fn filter<T: IntoPcset>(set: T) -> impl Fn(&[&str]) -> Vec<String> {
+pub fn filter<T: AsPcset>(set: T) -> impl Fn(&[&str]) -> Vec<String> {
     let is_included = is_note_included_in(set);
 
     move |notes: &[&str]| {
@@ -306,19 +272,19 @@ fn chroma_rotations(chroma: &str) -> Vec<String> {
         .collect()
 }
 
-static CACHE: LazyLock<Mutex<HashMap<String, Pcset>>> =
+// Cached pcsets live for the whole program (a `static` map is never cleared),
+// so each computed one is leaked via `Box::leak` and stored as a `&'static
+// Pcset`. Returning a cached hit is then just a pointer copy — no clone.
+static CACHE: LazyLock<Mutex<HashMap<String, &'static Pcset>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-fn chroma_to_pcset(chroma: &str) -> Option<Pcset> {
-    if let Some(cached) = CACHE.lock().unwrap().get(chroma) {
-        return Some(cached.clone());
+fn chroma_to_pcset(chroma: &str) -> Option<&'static Pcset> {
+    if let Some(cached) = CACHE.lock().unwrap().get(chroma).copied() {
+        return Some(cached);
     }
 
-    let pcset = chroma_to_pcset_uncached(chroma)?;
-    CACHE
-        .lock()
-        .unwrap()
-        .insert(String::from(chroma), pcset.clone());
+    let pcset: &'static Pcset = Box::leak(Box::new(chroma_to_pcset_uncached(chroma)?));
+    CACHE.lock().unwrap().insert(String::from(chroma), pcset);
     Some(pcset)
 }
 
@@ -478,10 +444,13 @@ mod tests {
 
     #[test]
     fn test_intervals() {
-        assert_eq!(intervals("101010101010"), words("1P 2M 3M 5d 6m 7m"));
+        assert_eq!(
+            intervals("101010101010"),
+            words("1P 2M 3M 5d 6m 7m").as_slice()
+        );
         assert!(intervals("1010").is_empty());
-        assert_eq!(intervals(&words("C G B")[..]), words("1P 5P 7M"));
-        assert_eq!(intervals(&words("D F A")[..]), words("2M 4P 6M"));
+        assert_eq!(intervals(&words("C G B")[..]), words("1P 5P 7M").as_slice());
+        assert_eq!(intervals(&words("D F A")[..]), words("2M 4P 6M").as_slice());
     }
 
     #[test]
