@@ -4,7 +4,8 @@ use regex::Regex;
 
 use crate::pitch_distance::distance as dist;
 use crate::pitch_distance::transpose as tr;
-use crate::pitch_note::AsNote;
+use crate::pitch_note::IntoNote;
+use crate::pitch_note::Note;
 
 static REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(_+|=|\^+|)([a-gA-G])([,']*)$").unwrap());
@@ -44,7 +45,7 @@ pub fn abc_to_scientific_notation(s: &str) -> String {
 }
 
 pub fn scientific_to_abc_notation(s: &str) -> String {
-    let note = s.note();
+    let note = s.into_note();
     let Some(note) = note else {
         return String::new();
     };
@@ -52,8 +53,7 @@ pub fn scientific_to_abc_notation(s: &str) -> String {
         return String::new();
     };
 
-    let letter = note.letter;
-    let acc = &note.acc;
+    let Note { letter, acc, .. } = note;
 
     let a = if acc.starts_with('b') {
         acc.replace('b', "_")
@@ -82,7 +82,7 @@ pub fn transpose(note: &str, interval: &str) -> String {
     scientific_to_abc_notation(&tr(abc_to_scientific_notation(note).as_str(), interval))
 }
 
-pub fn distance(from: &str, to: &str) -> &'static str {
+pub fn distance(from: &str, to: &str) -> String {
     dist(
         abc_to_scientific_notation(from).as_str(),
         abc_to_scientific_notation(to).as_str(),
@@ -141,7 +141,9 @@ mod tests {
 
     #[test]
     fn test_to_abc() {
-        let scientific = ["Abb2", "Bb3", "C4", "D5", "E#6", "F##7", "G#2", "Gb7", ""];
+        let scientific = [
+            "Abb2", "Bb3", "C4", "D5", "E#6", "F##7", "G#2", "Gb7", "",
+        ];
         assert_eq!(
             to_abc(&scientific),
             ["__A,,", "_B,", "C", "d", "^e'", "^^f''", "^G,,", "_g''", ""]
@@ -153,9 +155,7 @@ mod tests {
         let scientific = ["A0", "Bb0", "C0", "D0", "E#0", "F##0", "G#0"];
         assert_eq!(
             to_abc(&scientific),
-            [
-                "A,,,,", "_B,,,,", "C,,,,", "D,,,,", "^E,,,,", "^^F,,,,", "^G,,,,"
-            ]
+            ["A,,,,", "_B,,,,", "C,,,,", "D,,,,", "^E,,,,", "^^F,,,,", "^G,,,,"]
         );
     }
 }

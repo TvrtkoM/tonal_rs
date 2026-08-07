@@ -1,12 +1,12 @@
 use crate::{
     pitch::{Fifths, Named, Octaves, Pitch, PitchCoordinates},
-    pitch_interval::{AsInterval, coord_to_interval},
-    pitch_note::AsNote,
+    pitch_interval::{IntoInterval, coord_to_interval},
+    pitch_note::IntoNote,
 };
 
-pub fn distance<F: AsNote, T: AsNote>(from_note: F, to_note: T) -> &'static str {
-    let (Some(from), Some(to)) = (from_note.note(), to_note.note()) else {
-        return "";
+pub fn distance<F: IntoNote, T: IntoNote>(from_note: F, to_note: T) -> String {
+    let (Some(from), Some(to)) = (from_note.into_note(), to_note.into_note()) else {
+        return String::new();
     };
 
     let (from_fifth, from_oct, _) = (&from.coord).into();
@@ -25,21 +25,21 @@ pub fn distance<F: AsNote, T: AsNote>(from_note: F, to_note: T) -> &'static str 
     let coord: PitchCoordinates = (fifths, Some(oct), None).into();
 
     coord_to_interval(&coord, force_descending)
-        .map(|i| i.name.as_str())
-        .unwrap_or("")
+        .map(|i| i.name)
+        .unwrap_or_default()
 }
 
-pub fn transpose<N: AsNote, I: AsInterval>(note: N, interval: I) -> String {
-    let interval = interval.interval();
+pub fn transpose<N: IntoNote, I: IntoInterval>(note: N, interval: I) -> String {
+    let interval = interval.into_interval();
     match interval {
         Some(i) => transpose_with_coord(note, i.coord()),
         None => String::new(),
     }
 }
 
-pub fn transpose_with_coord<N: AsNote, C: Into<(Fifths, Octaves)>>(note: N, coord: C) -> String {
+pub fn transpose_with_coord<N: IntoNote, C: Into<(Fifths, Octaves)>>(note: N, coord: C) -> String {
     let (fifths, octaves) = coord.into();
-    let Some(note) = note.note() else {
+    let Some(note) = note.into_note() else {
         return String::new();
     };
     let (note_fifths, note_oct, _) = (&note.coord).into();
@@ -49,7 +49,7 @@ pub fn transpose_with_coord<N: AsNote, C: Into<(Fifths, Octaves)>>(note: N, coor
         (note_fifths + fifths, None, None).into()
     };
     let pitch: Pitch = (&tr).into();
-    if let Some(note) = (&pitch).note() {
+    if let Some(note) = (&pitch).into_note() {
         note.name()
     } else {
         String::new()

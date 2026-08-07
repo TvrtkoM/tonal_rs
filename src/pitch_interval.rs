@@ -1,8 +1,5 @@
 use regex::Regex;
-use std::{
-    collections::HashMap,
-    sync::{LazyLock, Mutex},
-};
+use std::sync::LazyLock;
 
 use crate::{
     error::TonalParseError,
@@ -188,27 +185,15 @@ impl Named for Interval {
     }
 }
 
-static INTERVAL_CACHE: LazyLock<Mutex<HashMap<String, Option<&'static Interval>>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-
-pub fn interval(src: &str) -> Option<&'static Interval> {
-    if let Some(cached) = INTERVAL_CACHE.lock().unwrap().get(src).copied() {
-        return cached;
-    }
-
-    let parsed = parse(src).map(|i| &*Box::leak(Box::new(i)));
-    INTERVAL_CACHE
-        .lock()
-        .unwrap()
-        .insert(src.to_string(), parsed);
-    parsed
+pub fn interval(src: &str) -> Option<Interval> {
+    parse(src)
 }
 
 impl TryFrom<&Pitch> for Interval {
     type Error = TonalParseError;
     fn try_from(p: &Pitch) -> Result<Self, Self::Error> {
         let name = pitch_name(p);
-        interval(&name).cloned().ok_or(TonalParseError {
+        interval(&name).ok_or(TonalParseError {
             entity: String::from("interval"),
             input: name,
         })
@@ -218,40 +203,38 @@ impl TryFrom<&Pitch> for Interval {
 impl TryFrom<&str> for Interval {
     type Error = TonalParseError;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        interval(s).cloned().ok_or_else(|| TonalParseError {
+        interval(s).ok_or_else(|| TonalParseError {
             entity: String::from("interval"),
             input: s.to_string(),
         })
     }
 }
 
-pub trait AsInterval {
-    /// Resolve to the cached, program-lifetime `Interval` for this input.
-    fn interval(self) -> Option<&'static Interval>;
+pub trait IntoInterval {
+    fn into_interval(self) -> Option<Interval>;
 }
 
-impl AsInterval for &str {
-    fn interval(self) -> Option<&'static Interval> {
+impl IntoInterval for &str {
+    fn into_interval(self) -> Option<Interval> {
         interval(self)
     }
 }
 
-impl AsInterval for Interval {
-    fn interval(self) -> Option<&'static Interval> {
-        // A caller-owned `Interval` isn't `'static`; resolve the cached one.
-        interval(&self.name)
+impl IntoInterval for Interval {
+    fn into_interval(self) -> Option<Interval> {
+        Some(self)
     }
 }
 
-impl AsInterval for &Interval {
-    fn interval(self) -> Option<&'static Interval> {
-        interval(&self.name)
+impl IntoInterval for &Interval {
+    fn into_interval(self) -> Option<Interval> {
+        Some(self.clone())
     }
 }
 
-impl AsInterval for &Pitch {
-    fn interval(self) -> Option<&'static Interval> {
-        interval(&pitch_name(self))
+impl IntoInterval for &Pitch {
+    fn into_interval(self) -> Option<Interval> {
+        Interval::try_from(self).ok()
     }
 }
 
@@ -338,7 +321,7 @@ fn pitch_name(p: &Pitch) -> String {
 pub(crate) fn coord_to_interval(
     coord: &PitchCoordinates,
     force_descending: bool,
-) -> Option<&'static Interval> {
+) -> Option<Interval> {
     let (f, o, _) = coord.into();
     let o = o.unwrap_or(0);
     let is_descending = f * 7 + o * 12 < 0;
@@ -348,7 +331,7 @@ pub(crate) fn coord_to_interval(
         IntervalCoordinates(f, o, Direction::Up)
     };
     let p: Pitch = (&PitchCoordinates::Interval(i_coord)).into();
-    (&p).interval()
+    Interval::try_from(&p).ok()
 }
 
 #[cfg(test)]
@@ -358,7 +341,7 @@ mod tests {
     // interval(i).name for each space-separated interval, rejoined (all valid).
     fn names(s: &str) -> String {
         s.split(' ')
-            .map(|i| interval(i).unwrap().name.clone())
+            .map(|i| interval(i).unwrap().name)
             .collect::<Vec<_>>()
             .join(" ")
     }

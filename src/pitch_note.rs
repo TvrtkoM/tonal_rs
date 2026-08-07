@@ -3,10 +3,7 @@ use crate::{
     pitch::{Named, Pitch, PitchCoordinates},
 };
 use regex::Regex;
-use std::{
-    collections::HashMap,
-    sync::{LazyLock, Mutex},
-};
+use std::sync::LazyLock;
 
 type NoteTokens = (String, String, String, String);
 
@@ -75,24 +72,15 @@ impl Named for Note {
     }
 }
 
-static NOTE_CACHE: LazyLock<Mutex<HashMap<String, Option<&'static Note>>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-
-pub fn note(name: &str) -> Option<&'static Note> {
-    if let Some(cached) = NOTE_CACHE.lock().unwrap().get(name).copied() {
-        return cached;
-    }
-
-    let parsed = parse(name).map(|n| &*Box::leak(Box::new(n)));
-    NOTE_CACHE.lock().unwrap().insert(name.to_string(), parsed);
-    parsed
+pub fn note(name: &str) -> Option<Note> {
+    parse(name)
 }
 
 impl TryFrom<&Pitch> for Note {
     type Error = TonalParseError;
     fn try_from(p: &Pitch) -> Result<Self, Self::Error> {
         let name = p.name();
-        note(&name).cloned().ok_or(TonalParseError {
+        note(&name).ok_or(TonalParseError {
             entity: String::from("note"),
             input: name,
         })
@@ -102,40 +90,38 @@ impl TryFrom<&Pitch> for Note {
 impl TryFrom<&str> for Note {
     type Error = TonalParseError;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        note(s).cloned().ok_or_else(|| TonalParseError {
+        note(s).ok_or_else(|| TonalParseError {
             entity: String::from("note"),
             input: s.to_string(),
         })
     }
 }
 
-pub trait AsNote {
-    /// Resolve to the cached, program-lifetime `Note` for this input.
-    fn note(self) -> Option<&'static Note>;
+pub trait IntoNote {
+    fn into_note(self) -> Option<Note>;
 }
 
-impl AsNote for &str {
-    fn note(self) -> Option<&'static Note> {
+impl IntoNote for &str {
+    fn into_note(self) -> Option<Note> {
         note(self)
     }
 }
 
-impl AsNote for Note {
-    fn note(self) -> Option<&'static Note> {
-        // A caller-owned `Note` isn't `'static`; resolve the cached one by name.
-        note(&self.name)
+impl IntoNote for Note {
+    fn into_note(self) -> Option<Note> {
+        Some(self)
     }
 }
 
-impl AsNote for &Note {
-    fn note(self) -> Option<&'static Note> {
-        note(&self.name)
+impl IntoNote for &Note {
+    fn into_note(self) -> Option<Note> {
+        Some(self.clone())
     }
 }
 
-impl AsNote for &Pitch {
-    fn note(self) -> Option<&'static Note> {
-        note(&self.name())
+impl IntoNote for &Pitch {
+    fn into_note(self) -> Option<Note> {
+        Note::try_from(self).ok()
     }
 }
 
