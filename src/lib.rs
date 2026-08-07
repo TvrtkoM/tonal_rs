@@ -9,3 +9,4 @@ pub mod pitch_distance;
 pub mod pitch_interval;
 pub mod pitch_note;
 pub mod range;
+pub mod scale_type;

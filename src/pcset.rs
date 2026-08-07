@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::{LazyLock, Mutex},
-};
+use std::sync::LazyLock;
 
 use regex::Regex;
 
@@ -299,41 +296,20 @@ pub fn filter<T: IntoPcset>(set: T) -> impl Fn(&[&str]) -> Vec<String> {
     }
 }
 
-fn chroma_rotations(chroma: &str) -> Vec<String> {
-    let binary = chroma.chars().collect::<Vec<char>>();
-    (0..binary.len())
-        .map(|i| rotated(i as i32, &binary).into_iter().collect())
-        .collect()
+// one-position cyclic rotation of 12-bit chroma
+fn rotate_chroma(v: i32) -> i32 {
+    ((v << 1) | (v >> 11)) & 0xFFF
 }
-
-static CACHE: LazyLock<Mutex<HashMap<String, Pcset>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 fn chroma_to_pcset(chroma: &str) -> Option<Pcset> {
-    if let Some(cached) = CACHE.lock().unwrap().get(chroma) {
-        return Some(cached.clone());
-    }
-
-    let pcset = chroma_to_pcset_uncached(chroma)?;
-    CACHE
-        .lock()
-        .unwrap()
-        .insert(String::from(chroma), pcset.clone());
-    Some(pcset)
-}
-
-fn chroma_to_pcset_uncached(chroma: &str) -> Option<Pcset> {
     let set_num = chroma_to_number(chroma);
     if set_num == 0 {
         return None;
     }
 
-    let normalized_num: i32 = chroma_rotations(chroma)
-        .iter()
-        .filter_map(|c| {
-            let n = chroma_to_number(c);
-            if n >= 2048 { Some(n) } else { None }
-        })
+    let normalized_num = std::iter::successors(Some(set_num), |&v| Some(rotate_chroma(v)))
+        .take(12)
+        .filter(|&n| n >= 2048)
         .min()?;
 
     let normalized = set_num_to_chroma(normalized_num);
