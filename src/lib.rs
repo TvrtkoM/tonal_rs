@@ -1,4 +1,5 @@
 pub mod abc_notation;
+pub mod chord_type;
 pub mod collection;
 pub mod error;
 pub mod midi;
