@@ -11,5 +11,6 @@ pub mod pitch_interval;
 pub mod pitch_note;
 pub mod range;
 pub mod roman_numeral;
+pub mod scale;
 pub mod scale_type;
 pub mod time_signature;

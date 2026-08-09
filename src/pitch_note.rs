@@ -101,6 +101,12 @@ pub trait IntoNote {
     fn into_note(self) -> Option<Note>;
 }
 
+impl IntoNote for String {
+    fn into_note(self) -> Option<Note> {
+        note(&self)
+    }
+}
+
 impl IntoNote for &str {
     fn into_note(self) -> Option<Note> {
         note(self)

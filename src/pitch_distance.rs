@@ -57,18 +57,18 @@ pub fn transpose_with_coord<N: IntoNote, C: Into<(Fifths, Octaves)>>(note: N, co
 }
 
 pub(crate) fn tonic_intervals_transposer(
-    intervals: &[&str],
-    tonic: Option<&str>,
+    intervals: Vec<String>,
+    tonic: Option<String>,
 ) -> impl Fn(i32) -> String {
     let len = intervals.len() as i32;
     move |normalized: i32| -> String {
-        let Some(tonic) = tonic else {
+        let Some(tonic) = tonic.as_deref() else {
             return String::new();
         };
         let index = normalized.rem_euclid(len) as usize;
         let octaves = normalized.div_euclid(len);
         let root = transpose_with_coord(tonic, (0, octaves));
-        transpose(root.as_str(), intervals[index])
+        transpose(root.as_str(), intervals[index].as_str())
     }
 }
 
