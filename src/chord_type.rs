@@ -128,7 +128,7 @@ pub fn keys() -> Vec<&'static str> {
 
 #[rustfmt::skip]
 const DATA: &[(&str, &str, &[&str])] = &[
-    ("1P 3M 5P", "major", &["M", "^", "maj"]),
+    ("1P 3M 5P", "major", &["M", "^", "", "maj"]),
     ("1P 3M 5P 7M", "major seventh", &["maj7", "Δ", "ma7", "M7", "Maj7", "^7"]),
     ("1P 3M 5P 7M 9M", "major ninth", &["maj9", "Δ9", "^9"]),
     ("1P 3M 5P 7M 9M 13M", "major thirteenth", &["maj13", "Maj13", "^13"]),
@@ -272,7 +272,7 @@ mod tests {
         assert_eq!(c.set_num, 2192);
         assert_eq!(c.quality, ChordQuality::Major);
         assert_eq!(c.intervals, ["1P", "3M", "5P"]);
-        assert_eq!(c.aliases, ["M", "^", "maj"]);
+        assert_eq!(c.aliases, ["M", "^", "", "maj"]);
         assert_eq!(c.chroma, "100010010000");
         assert_eq!(c.normalized, "100001000100");
     }
@@ -303,7 +303,7 @@ mod tests {
     fn test_all_have_abbreviatures() {
         for &(_, _, aliases) in DATA {
             assert!(!aliases.is_empty());
-            assert!(aliases.iter().all(|a| !a.trim().is_empty()));
+            assert!(aliases.iter().any(|a| !a.trim().is_empty()));
         }
     }
 
