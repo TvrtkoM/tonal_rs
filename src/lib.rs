@@ -3,6 +3,7 @@ pub mod chord;
 pub mod chord_detect;
 pub mod chord_type;
 pub mod collection;
+pub mod duration_value;
 pub mod error;
 pub mod interval;
 pub mod midi;
