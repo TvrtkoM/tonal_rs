@@ -156,13 +156,7 @@ impl Pitch {
     }
 }
 
-pub fn alt_to_acc(alt: i32) -> String {
-    if alt < 0 {
-        "b".repeat(alt.unsigned_abs() as usize)
-    } else {
-        "#".repeat(alt as usize)
-    }
-}
+pub use crate::pitch_note::alt_to_acc;
 
 pub fn step_to_letter(step: usize) -> Option<char> {
     "CDEFGAB".chars().nth(step)

@@ -138,6 +138,14 @@ pub fn acc_to_alt(acc: &str) -> i32 {
         .map_or(len, |c| if c == 'b' { -len } else { len })
 }
 
+pub fn alt_to_acc(alt: i32) -> String {
+    if alt < 0 {
+        "b".repeat(alt.unsigned_abs() as usize)
+    } else {
+        "#".repeat(alt as usize)
+    }
+}
+
 static NOTE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^([a-gA-G]?)(#+|b+|x+|)(-?\d*)\s*(.*)$").unwrap());
 
@@ -356,5 +364,14 @@ mod tests {
         assert_eq!(acc_to_alt("bb"), -2);
         assert_eq!(acc_to_alt("#"), 1);
         assert_eq!(acc_to_alt("##"), 2);
+    }
+
+    #[test]
+    fn test_alt_to_acc() {
+        assert_eq!(alt_to_acc(0), "");
+        assert_eq!(alt_to_acc(-1), "b");
+        assert_eq!(alt_to_acc(-2), "bb");
+        assert_eq!(alt_to_acc(1), "#");
+        assert_eq!(alt_to_acc(2), "##");
     }
 }
