@@ -99,6 +99,23 @@ fn calc_dots(fraction: Fraction, dots: usize) -> Fraction {
     (numerator, denominator)
 }
 
+// source: https://en.wikipedia.org/wiki/Note_value
+#[rustfmt::skip]
+const DATA: &[(f64, &str, &[&str])] = &[
+    (0.125, "dl", &["large", "duplex longa", "maxima", "octuple", "octuple whole"]),
+    (0.25, "l", &["long", "longa"]),
+    (0.5, "d", &["double whole", "double", "breve"]),
+    (1.0, "w", &["whole", "semibreve"]),
+    (2.0, "h", &["half", "minim"]),
+    (4.0, "q", &["quarter", "crotchet"]),
+    (8.0, "e", &["eighth", "quaver"]),
+    (16.0, "s", &["sixteenth", "semiquaver"]),
+    (32.0, "t", &["thirty-second", "demisemiquaver"]),
+    (64.0, "sf", &["sixty-fourth", "hemidemisemiquaver"]),
+    (128.0, "h", &["hundred twenty-eighth"]),
+    (256.0, "th", &["two hundred fifty-sixth"]),
+];
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -120,7 +137,13 @@ mod tests {
         assert_eq!(dl.fraction, (12., 1.));
         assert_eq!(
             dl.names,
-            ["large", "duplex longa", "maxima", "octuple", "octuple whole"]
+            [
+                "large",
+                "duplex longa",
+                "maxima",
+                "octuple",
+                "octuple whole"
+            ]
         );
         assert_eq!(dl.shorthand, "dl");
     }
@@ -145,7 +168,10 @@ mod tests {
 
     #[test]
     fn test_fraction() {
-        let fr: Vec<Fraction> = ["w", "w.", "w..", "w..."].iter().map(|n| fraction(n)).collect();
+        let fr: Vec<Fraction> = ["w", "w.", "w..", "w..."]
+            .iter()
+            .map(|n| fraction(n))
+            .collect();
         assert_eq!(fr, [(1., 1.), (3., 2.), (7., 4.), (15., 8.)]);
     }
 
@@ -162,20 +188,3 @@ mod tests {
         );
     }
 }
-
-// source: https://en.wikipedia.org/wiki/Note_value
-#[rustfmt::skip]
-const DATA: &[(f64, &str, &[&str])] = &[
-    (0.125, "dl", &["large", "duplex longa", "maxima", "octuple", "octuple whole"]),
-    (0.25, "l", &["long", "longa"]),
-    (0.5, "d", &["double whole", "double", "breve"]),
-    (1.0, "w", &["whole", "semibreve"]),
-    (2.0, "h", &["half", "minim"]),
-    (4.0, "q", &["quarter", "crotchet"]),
-    (8.0, "e", &["eighth", "quaver"]),
-    (16.0, "s", &["sixteenth", "semiquaver"]),
-    (32.0, "t", &["thirty-second", "demisemiquaver"]),
-    (64.0, "sf", &["sixty-fourth", "hemidemisemiquaver"]),
-    (128.0, "h", &["hundred twenty-eighth"]),
-    (256.0, "th", &["two hundred fifty-sixth"]),
-];
