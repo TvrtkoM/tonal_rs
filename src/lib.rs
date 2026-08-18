@@ -8,6 +8,7 @@ pub mod error;
 pub mod interval;
 pub mod key;
 pub mod midi;
+pub mod notation_scientific;
 pub mod note;
 pub mod pcset;
 pub mod pitch;
