@@ -1,10 +1,10 @@
-use std::sync::LazyLock;
+use std::{borrow::Cow, sync::LazyLock};
 
-use crate::regexes;
+use crate::{pitch::Named, regexes};
 
 pub type Fraction = (f64, f64);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DurationValue {
     pub value: f64,
     pub name: String,
@@ -12,6 +12,18 @@ pub struct DurationValue {
     pub shorthand: &'static str,
     pub dots: String,
     pub names: &'static [&'static str],
+}
+
+impl Named for DurationValue {
+    fn name(&self) -> std::borrow::Cow<'_, str> {
+        Cow::from(self.name.as_str())
+    }
+}
+
+impl std::fmt::Display for DurationValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
 }
 
 static VALUES: LazyLock<Vec<DurationValue>> = LazyLock::new(build_values);

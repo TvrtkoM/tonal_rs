@@ -1,7 +1,10 @@
+use std::borrow::Cow;
+
 use crate::{
     collection::range,
     error::TonalParseError,
     note::transpose,
+    pitch::Named,
     pitch_interval::{Interval, IntoInterval},
     pitch_note::{IntoNote, Note},
     regexes,
@@ -37,6 +40,17 @@ impl Pcset {
     }
 }
 
+impl Named for Pcset {
+    fn name(&self) -> std::borrow::Cow<'_, str> {
+        Cow::from(self.name.as_str())
+    }
+}
+
+impl std::fmt::Display for Pcset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
 impl TryFrom<&str> for Pcset {
     type Error = TonalParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {

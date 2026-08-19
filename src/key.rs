@@ -1,4 +1,7 @@
+use std::borrow::Cow;
+
 use crate::note::{transpose, transpose_fifths};
+use crate::pitch::Named;
 use crate::pitch_note::{IntoNote, acc_to_alt, alt_to_acc};
 use crate::regexes;
 use crate::roman_numeral::IntoRomanNumeral;
@@ -43,6 +46,18 @@ pub struct MinorKey {
 pub struct KeyChord {
     pub(crate) name: String,
     pub(crate) roles: Vec<String>,
+}
+
+impl Named for KeyChord {
+    fn name(&self) -> std::borrow::Cow<'_, str> {
+        Cow::from(self.name.as_str())
+    }
+}
+
+impl std::fmt::Display for KeyChord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

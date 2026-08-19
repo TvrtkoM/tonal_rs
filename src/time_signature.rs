@@ -47,6 +47,12 @@ impl Named for TimeSignature {
     }
 }
 
+impl std::fmt::Display for TimeSignature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
 pub trait IntoTimeSignature {
     fn into_time_signature(self) -> Option<TimeSignature>;
 }

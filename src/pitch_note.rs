@@ -65,6 +65,12 @@ impl Named for Note {
     }
 }
 
+impl std::fmt::Display for Note {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
 pub fn note(name: &str) -> Option<Note> {
     parse(name)
 }

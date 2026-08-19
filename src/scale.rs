@@ -1,8 +1,11 @@
+use std::borrow::Cow;
+
 use crate::{
     collection::{range, rotate, rotated},
     midi::ToMidi,
     note::{enharmonic, from_midi, sorted_uniq_names},
     pcset::{chroma, is_chroma, is_subset_of, is_superset_of, modes},
+    pitch::Named,
     pitch_distance::{tonic_intervals_transposer, transpose},
     pitch_note::IntoNote,
     scale_type::{all as scale_types, get as get_scale_type, names as scale_type_names},
@@ -39,14 +42,26 @@ impl Scale {
         ScaleParts {
             name: &self.name,
             set_num: self.set_num,
-            chroma: &self.chroma,
-            normalized: &self.normalized,
-            intervals: &self.intervals,
-            aliases: &self.aliases,
+            chroma: self.chroma,
+            normalized: self.normalized,
+            intervals: self.intervals,
+            aliases: self.aliases,
             tonic: &self.tonic,
             kind: &self.kind,
             notes: &self.notes,
         }
+    }
+}
+
+impl Named for Scale {
+    fn name(&self) -> std::borrow::Cow<'_, str> {
+        Cow::from(self.name.as_str())
+    }
+}
+
+impl std::fmt::Display for Scale {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
     }
 }
 

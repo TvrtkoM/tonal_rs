@@ -175,6 +175,12 @@ impl Named for Pitch {
     }
 }
 
+impl std::fmt::Display for Pitch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
 // return index of fifth in unaltered array FIFTHS_TO_STEPS
 fn unaltered(f: i32) -> usize {
     (f + 1).rem_euclid(7) as usize

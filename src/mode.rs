@@ -1,8 +1,10 @@
+use std::borrow::Cow;
 use std::sync::LazyLock;
 
 use crate::collection;
 use crate::interval;
 use crate::note::transpose;
+use crate::pitch::Named;
 use crate::scale_type;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,6 +49,18 @@ impl Mode {
             aliases: &self.aliases,
             intervals: &self.intervals,
         }
+    }
+}
+
+impl Named for Mode {
+    fn name(&self) -> std::borrow::Cow<'_, str> {
+        Cow::from(self.name.as_str())
+    }
+}
+
+impl std::fmt::Display for Mode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
     }
 }
 

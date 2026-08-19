@@ -1,6 +1,6 @@
-use std::{collections::HashMap, sync::LazyLock};
+use std::{borrow::Cow, collections::HashMap, sync::LazyLock};
 
-use crate::pcset;
+use crate::{pcset, pitch::Named};
 
 #[derive(Debug, Clone)]
 pub struct ScaleType {
@@ -10,6 +10,18 @@ pub struct ScaleType {
     pub normalized: String,
     pub intervals: Vec<String>,
     pub aliases: Vec<String>,
+}
+
+impl Named for ScaleType {
+    fn name(&self) -> std::borrow::Cow<'_, str> {
+        Cow::from(self.name.as_str())
+    }
+}
+
+impl std::fmt::Display for ScaleType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
 }
 
 // The scale dictionary is a fixed, read-only table built once from `DATA`.

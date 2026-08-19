@@ -1,4 +1,6 @@
-use crate::pitch::alt_to_acc;
+use std::borrow::Cow;
+
+use crate::pitch::{Named, alt_to_acc};
 use crate::regexes;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,6 +78,18 @@ pub fn name(pitch: &ScientificPitch) -> String {
     match oct {
         Some(o) => format!("{pc}{o}"),
         None => pc,
+    }
+}
+
+impl Named for ScientificPitch {
+    fn name(&self) -> std::borrow::Cow<'_, str> {
+        Cow::from(name(self))
+    }
+}
+
+impl std::fmt::Display for ScientificPitch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
     }
 }
 

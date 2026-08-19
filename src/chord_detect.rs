@@ -4,7 +4,7 @@ use crate::{
     pitch_note::IntoNote,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct FoundChord {
     pub weight: f32,
     pub name: String,

@@ -1,5 +1,7 @@
+use std::borrow::Cow;
+
 use crate::{
-    pitch::{Direction, Pitch, alt_to_acc},
+    pitch::{Direction, Named, Pitch, alt_to_acc},
     pitch_interval::{Interval, IntoInterval},
     pitch_note::acc_to_alt,
     regexes,
@@ -47,6 +49,18 @@ impl RomanNumeral {
             chord_type: &self.chord_type,
             major: self.major,
         }
+    }
+}
+
+impl Named for RomanNumeral {
+    fn name(&self) -> std::borrow::Cow<'_, str> {
+        Cow::from(self.name.as_str())
+    }
+}
+
+impl std::fmt::Display for RomanNumeral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
     }
 }
 

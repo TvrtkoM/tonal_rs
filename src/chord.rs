@@ -1,7 +1,10 @@
+use std::borrow::Cow;
+
 use crate::chord_type::{ChordQuality, ChordType, all as chord_types, get as get_chord_type};
 use crate::interval::subtract;
 use crate::note::distance;
 use crate::pcset::{is_subset_of, is_superset_of};
+use crate::pitch::Named;
 use crate::pitch_distance::{tonic_intervals_transposer, transpose as transpose_note};
 use crate::pitch_note::{IntoNote, Note, tokenize_note};
 use crate::scale_type::all as scale_types;
@@ -42,6 +45,18 @@ pub struct ChordParts<'a> {
     pub root_degree: Option<i32>,
     pub symbol: &'a str,
     pub notes: &'a [String],
+}
+
+impl Named for Chord {
+    fn name(&self) -> std::borrow::Cow<'_, str> {
+        Cow::from(self.name.as_str())
+    }
+}
+
+impl std::fmt::Display for Chord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
 }
 
 impl Chord {

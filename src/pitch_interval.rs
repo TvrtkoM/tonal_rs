@@ -181,6 +181,12 @@ impl Named for Interval {
     }
 }
 
+impl std::fmt::Display for Interval {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
 pub fn interval(src: &str) -> Option<Interval> {
     parse(src)
 }

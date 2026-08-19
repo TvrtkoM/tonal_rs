@@ -12,7 +12,7 @@ pub enum ChordQuality {
     Unknown,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChordType {
     pub name: String,
     pub quality: ChordQuality,
