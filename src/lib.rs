@@ -23,3 +23,5 @@ pub mod scale;
 pub mod scale_type;
 pub mod time_signature;
 pub mod voice_leading;
+pub mod voicing;
+pub mod voicing_dictionary;
