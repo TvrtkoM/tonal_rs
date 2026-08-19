@@ -22,7 +22,7 @@ impl NamedSet {
                 continue;
             };
             if let Some(slot) = arr.get_mut(note.chroma as usize) {
-                slot.get_or_insert(note.name);
+                let _ = slot.get_or_insert(note.name);
             }
         }
         Self { pc_to_name: arr }

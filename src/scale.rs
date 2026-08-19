@@ -1,5 +1,5 @@
 use crate::{
-    collection::{range, rotated},
+    collection::{range, rotate, rotated},
     midi::ToMidi,
     note::{enharmonic, from_midi, sorted_uniq_names},
     pcset::{chroma, is_chroma, is_subset_of, is_superset_of, modes},
@@ -158,9 +158,13 @@ pub fn detect(notes: &[&str], options: ScaleDetectOptions) -> Vec<String> {
         return Vec::new();
     };
 
-    let mut pitch_classes: Vec<String> = notes_chroma.chars().map(String::from).collect();
-    pitch_classes[tonic_chroma as usize] = String::from("1");
-    let scale_chroma = rotated(tonic_chroma, &pitch_classes[..]).join("");
+    let mut pitch_classes: Vec<char> = notes_chroma.chars().collect();
+    if let Some(slot) = pitch_classes.get_mut(tonic_chroma as usize) {
+        *slot = '1';
+    }
+    rotate(tonic_chroma, &mut pitch_classes[..]);
+
+    let scale_chroma: String = pitch_classes.iter().collect();
 
     let m = scale_types().iter().find(|st| st.chroma == scale_chroma);
 

@@ -1,5 +1,5 @@
 use crate::{
-    collection::{range, rotated},
+    collection::range,
     error::TonalParseError,
     note::transpose,
     pitch_interval::{Interval, IntoInterval},
@@ -229,16 +229,10 @@ pub fn modes<T: IntoPcset>(set: T, normalize: bool) -> Vec<String> {
     let Some(pcs) = set.into_pcset() else {
         return vec![];
     };
-    let binary = pcs.chroma.chars().collect::<Vec<char>>();
-    (0..binary.len())
-        .filter_map(|i| {
-            let r = rotated(i as i32, &binary);
-            if normalize && r[0] == '0' {
-                None
-            } else {
-                Some(r.iter().collect())
-            }
-        })
+    std::iter::successors(Some(pcs.set_num), |&v| Some(rotate_chroma(v)))
+        .take(12)
+        .filter(|&num| !normalize || num >= 2048)
+        .map(set_num_to_chroma)
         .collect()
 }
 
