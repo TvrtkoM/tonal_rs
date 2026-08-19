@@ -22,3 +22,4 @@ pub mod roman_numeral;
 pub mod scale;
 pub mod scale_type;
 pub mod time_signature;
+pub mod voice_leading;
