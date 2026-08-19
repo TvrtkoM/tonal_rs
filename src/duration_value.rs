@@ -1,6 +1,6 @@
-use std::{borrow::Cow, sync::LazyLock};
+use std::{borrow::Cow, str::FromStr, sync::LazyLock};
 
-use crate::{pitch::Named, regexes};
+use crate::{error::TonalParseError, pitch::Named, regexes};
 
 pub type Fraction = (f64, f64);
 
@@ -79,6 +79,26 @@ pub fn get(name: &str) -> Option<DurationValue> {
         dots,
         names: base.names,
     })
+}
+
+impl TryFrom<&str> for DurationValue {
+    type Error = TonalParseError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match get(value) {
+            Some(parsed) => Ok(parsed),
+            _ => Err(TonalParseError {
+                entity: String::from("duration value"),
+                input: value.to_string(),
+            }),
+        }
+    }
+}
+
+impl FromStr for DurationValue {
+    type Err = TonalParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        DurationValue::try_from(s)
+    }
 }
 
 pub fn value(name: &str) -> f64 {

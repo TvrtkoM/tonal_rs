@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, str::FromStr};
 
 use crate::{
     error::TonalParseError,
@@ -93,6 +93,13 @@ impl TryFrom<&str> for Note {
             entity: String::from("note"),
             input: s.to_string(),
         })
+    }
+}
+
+impl FromStr for Note {
+    type Err = TonalParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Note::try_from(s)
     }
 }
 

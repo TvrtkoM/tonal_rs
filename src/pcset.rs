@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, str::FromStr};
 
 use crate::{
     collection::range,
@@ -65,6 +65,13 @@ impl TryFrom<&str> for Pcset {
                 input: String::from(value),
             })
         }
+    }
+}
+
+impl FromStr for Pcset {
+    type Err = TonalParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Pcset::try_from(s)
     }
 }
 

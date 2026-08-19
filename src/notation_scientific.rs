@@ -1,5 +1,7 @@
 use std::borrow::Cow;
+use std::str::FromStr;
 
+use crate::error::TonalParseError;
 use crate::pitch::{Named, alt_to_acc};
 use crate::regexes;
 
@@ -65,6 +67,26 @@ pub fn parse(note_name: &str) -> Option<ScientificPitch> {
     };
 
     Some(ScientificPitch { step, alt, oct })
+}
+
+impl TryFrom<&str> for ScientificPitch {
+    type Error = TonalParseError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match parse(value) {
+            Some(parsed) => Ok(parsed),
+            _ => Err(TonalParseError {
+                entity: String::from("scientific pitch"),
+                input: value.to_string(),
+            }),
+        }
+    }
+}
+
+impl FromStr for ScientificPitch {
+    type Err = TonalParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        ScientificPitch::try_from(s)
+    }
 }
 
 pub fn name(pitch: &ScientificPitch) -> String {

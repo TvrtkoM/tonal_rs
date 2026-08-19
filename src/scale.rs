@@ -1,7 +1,8 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, str::FromStr};
 
 use crate::{
     collection::{range, rotate, rotated},
+    error::TonalParseError,
     midi::ToMidi,
     note::{enharmonic, from_midi, sorted_uniq_names},
     pcset::{chroma, is_chroma, is_subset_of, is_superset_of, modes},
@@ -143,6 +144,26 @@ impl IntoScale for &str {
 impl IntoScale for (&str, &str) {
     fn into_scale(self) -> Option<Scale> {
         parse_tuple(self)
+    }
+}
+
+impl TryFrom<&str> for Scale {
+    type Error = TonalParseError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value.into_scale() {
+            Some(parsed) => Ok(parsed),
+            _ => Err(TonalParseError {
+                entity: String::from("scale"),
+                input: value.to_string(),
+            }),
+        }
+    }
+}
+
+impl FromStr for Scale {
+    type Err = TonalParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Scale::try_from(s)
     }
 }
 

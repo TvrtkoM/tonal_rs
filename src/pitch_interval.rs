@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, str::FromStr};
 
 use crate::{
     error::TonalParseError,
@@ -209,6 +209,13 @@ impl TryFrom<&str> for Interval {
             entity: String::from("interval"),
             input: s.to_string(),
         })
+    }
+}
+
+impl FromStr for Interval {
+    type Err = TonalParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Interval::try_from(s)
     }
 }
 

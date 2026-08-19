@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, str::FromStr};
 
 use crate::{error::TonalParseError, pitch::Named, regexes};
 
@@ -78,6 +78,26 @@ impl IntoTimeSignature for (&str, &str) {
     }
 }
 
+impl TryFrom<&str> for TimeSignature {
+    type Error = TonalParseError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value.into_time_signature() {
+            Some(parsed) => Ok(parsed),
+            _ => Err(TonalParseError {
+                entity: String::from("time signature"),
+                input: value.to_string(),
+            }),
+        }
+    }
+}
+
+impl FromStr for TimeSignature {
+    type Err = TonalParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        TimeSignature::try_from(s)
+    }
+}
+
 pub fn get<T: IntoTimeSignature>(literal: T) -> Option<TimeSignature> {
     literal.into_time_signature()
 }
@@ -136,7 +156,7 @@ impl TryFrom<(&str, &str)> for ParsedTimeSignature {
             Some(parsed) => Ok(parsed),
             _ => Err(TonalParseError {
                 entity: String::from("parsed time signature"),
-                input: format!("{value:?}"),
+                input: format!("{}/{}", value.0, value.1),
             }),
         }
     }
@@ -149,9 +169,16 @@ impl TryFrom<&str> for ParsedTimeSignature {
             Some(parsed) => Ok(parsed),
             _ => Err(TonalParseError {
                 entity: String::from("parsed time signature"),
-                input: format!("{value:?}"),
+                input: value.to_string(),
             }),
         }
+    }
+}
+
+impl FromStr for ParsedTimeSignature {
+    type Err = TonalParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        ParsedTimeSignature::try_from(s)
     }
 }
 

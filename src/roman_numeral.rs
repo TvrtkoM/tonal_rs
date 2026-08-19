@@ -1,6 +1,7 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, str::FromStr};
 
 use crate::{
+    error::TonalParseError,
     pitch::{Direction, Named, Pitch, alt_to_acc},
     pitch_interval::{Interval, IntoInterval},
     pitch_note::acc_to_alt,
@@ -155,6 +156,26 @@ impl IntoRomanNumeral for &Interval {
             dir: Some(self.dir),
         };
         from_pitch(&p)
+    }
+}
+
+impl TryFrom<&str> for RomanNumeral {
+    type Error = TonalParseError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value.into_roman_numeral() {
+            Some(parsed) => Ok(parsed),
+            _ => Err(TonalParseError {
+                entity: String::from("roman numeral"),
+                input: value.to_string(),
+            }),
+        }
+    }
+}
+
+impl FromStr for RomanNumeral {
+    type Err = TonalParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        RomanNumeral::try_from(s)
     }
 }
 
