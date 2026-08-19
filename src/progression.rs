@@ -18,7 +18,7 @@ where
                     let tr = transpose(tonic.clone(), rn);
                     format!("{tr}{}", rn.chord_type)
                 })
-                .unwrap_or("".to_string())
+                .unwrap_or(String::new())
         })
         .collect()
 }

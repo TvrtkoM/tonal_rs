@@ -410,7 +410,7 @@ pub fn notes<C: IntoChord>(chord_name: C, tonic: Option<&str>) -> Vec<String> {
 pub fn degrees<C: IntoChord>(chord_name: C, tonic: Option<&str>) -> impl Fn(i32) -> String {
     let (chord_tonic, intervals) = match chord_name.into_chord() {
         Some(c) => (c.tonic, c.intervals),
-        _ => ("".to_string(), vec![]),
+        _ => (String::new(), vec![]),
     };
 
     let note = tonic
@@ -421,7 +421,7 @@ pub fn degrees<C: IntoChord>(chord_name: C, tonic: Option<&str>) -> impl Fn(i32)
 
     move |degree| {
         if degree == 0 {
-            "".to_string()
+            String::new()
         } else {
             transpose(if degree > 0 { degree - 1 } else { degree })
         }
@@ -431,7 +431,7 @@ pub fn degrees<C: IntoChord>(chord_name: C, tonic: Option<&str>) -> impl Fn(i32)
 pub fn steps<C: IntoChord>(chord_name: C, tonic: Option<&str>) -> impl Fn(i32) -> String {
     let (chord_tonic, intervals) = match chord_name.into_chord() {
         Some(c) => (c.tonic, c.intervals),
-        _ => ("".to_string(), vec![]),
+        _ => (String::new(), vec![]),
     };
 
     let note = tonic

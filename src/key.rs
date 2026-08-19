@@ -169,7 +169,7 @@ fn supertonics(dominants: &[String], target_triads: &[&str]) -> Vec<String> {
         .enumerate()
         .map(|(i, chord)| {
             if chord.is_empty() {
-                return "".to_string();
+                return String::new();
             }
             let mut chord_chars = chord.chars();
             chord_chars.next_back();
@@ -200,7 +200,7 @@ fn key_scale(
             .map(|gr| {
                 gr.into_roman_numeral()
                     .map(|r| r.interval)
-                    .unwrap_or("".to_string())
+                    .unwrap_or(String::new())
             })
             .collect();
         let scale: Vec<_> = intervals
@@ -219,7 +219,7 @@ fn key_scale(
                 if scale.contains(&note) && !chords.contains(&seventh) {
                     seventh
                 } else {
-                    "".to_string()
+                    String::new()
                 }
             })
             .collect();
@@ -230,7 +230,7 @@ fn key_scale(
             .iter()
             .map(|chord| {
                 if chord.is_empty() {
-                    return "".to_string();
+                    return String::new();
                 }
                 let mut chord_chars = chord.chars();
                 chord_chars.next_back();

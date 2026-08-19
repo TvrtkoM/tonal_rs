@@ -38,10 +38,10 @@ pub(crate) fn tokenize(s: &str) -> (String, String, String, String) {
             c[4].to_string(),
         ),
         None => (
-            "".to_string(),
-            "".to_string(),
-            "".to_string(),
-            "".to_string(),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
         ),
     }
 }
@@ -92,7 +92,7 @@ impl FromStr for ScientificPitch {
 pub fn name(pitch: &ScientificPitch) -> String {
     let ScientificPitch { step, alt, oct } = pitch;
     let Some(letter) = "CDEFGAB".chars().nth(*step) else {
-        return "".to_string();
+        return String::new();
     };
 
     let pc = format!("{letter}{}", alt_to_acc(*alt));
