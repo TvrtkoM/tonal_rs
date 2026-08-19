@@ -2,7 +2,8 @@ use std::{collections::HashMap, sync::LazyLock};
 
 use crate::pcset;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ChordQuality {
     Major,
     Minor,

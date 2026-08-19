@@ -8,7 +8,7 @@ use crate::scale_type::all as scale_types;
 
 pub type ChordNameTokens = (String, String, String); // tonic, type, bass
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Chord {
     pub(crate) name: String,
     pub(crate) quality: ChordQuality,

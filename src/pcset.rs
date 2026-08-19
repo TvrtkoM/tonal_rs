@@ -7,7 +7,7 @@ use crate::{
     regexes,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pcset {
     pub(crate) name: String,
     pub(crate) set_num: i32,
@@ -26,18 +26,6 @@ pub struct PcsetParts<'a> {
 }
 
 impl Pcset {
-    pub fn set_num(&self) -> i32 {
-        self.set_num
-    }
-
-    pub fn chroma(&self) -> String {
-        self.chroma.clone()
-    }
-
-    pub fn intervals(&self) -> Vec<String> {
-        self.intervals.clone()
-    }
-
     pub fn parts(&self) -> PcsetParts<'_> {
         PcsetParts {
             name: &self.name,
@@ -378,8 +366,8 @@ mod tests {
 
         // order independent — same canonical set number
         assert_eq!(
-            get(&words("d e c")[..]).unwrap().set_num(),
-            get(&words("c d e")[..]).unwrap().set_num()
+            get(&words("d e c")[..]).unwrap().set_num,
+            get(&words("c d e")[..]).unwrap().set_num,
         );
         assert!(get(&["not a note or interval"][..]).is_none());
         let empty: &[&str] = &[];
@@ -388,12 +376,9 @@ mod tests {
 
     #[test]
     fn test_get_from_pcset_number() {
-        assert_eq!(
-            get(2048).unwrap().set_num(),
-            get(&["C"][..]).unwrap().set_num()
-        );
+        assert_eq!(get(2048).unwrap().set_num, get(&["C"][..]).unwrap().set_num);
         let set = get(&["D"][..]).unwrap();
-        assert_eq!(get(set.set_num()).unwrap().chroma(), set.chroma());
+        assert_eq!(get(set.set_num).unwrap().chroma, set.chroma);
     }
 
     #[test]
@@ -451,7 +436,7 @@ mod tests {
 
     #[test]
     fn test_is_chroma() {
-        assert_eq!(get("101010101010").unwrap().chroma(), "101010101010");
+        assert_eq!(get("101010101010").unwrap().chroma, "101010101010");
         assert_eq!(chroma("1010101"), "000000000000");
         assert_eq!(chroma("blah"), "000000000000");
         assert_eq!(chroma("c d e"), "000000000000");

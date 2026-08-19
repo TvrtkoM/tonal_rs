@@ -1,6 +1,7 @@
 use crate::{error::TonalParseError, pitch::Named, regexes};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum TimeSignatureType {
     Simple,
     Compound,

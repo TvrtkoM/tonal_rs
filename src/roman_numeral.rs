@@ -1,11 +1,11 @@
 use crate::{
     pitch::{Direction, Pitch, alt_to_acc},
-    pitch_interval::{IntoInterval, Interval},
+    pitch_interval::{Interval, IntoInterval},
     pitch_note::acc_to_alt,
     regexes,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RomanNumeral {
     pub(crate) step: usize,
     pub(crate) alt: i32,
@@ -159,8 +159,14 @@ mod tests {
 
     #[test]
     fn test_names() {
-        assert_eq!(names(true).to_vec(), ["I", "II", "III", "IV", "V", "VI", "VII"]);
-        assert_eq!(names(false).to_vec(), ["i", "ii", "iii", "iv", "v", "vi", "vii"]);
+        assert_eq!(
+            names(true).to_vec(),
+            ["I", "II", "III", "IV", "V", "VI", "VII"]
+        );
+        assert_eq!(
+            names(false).to_vec(),
+            ["i", "ii", "iii", "iv", "v", "vi", "vii"]
+        );
     }
 
     #[test]

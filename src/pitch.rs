@@ -23,7 +23,7 @@ pub trait Named {
     fn name(&self) -> String;
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(i8)]
 pub enum Direction {
     Up = 1,
@@ -33,10 +33,10 @@ pub enum Direction {
 pub type Fifths = i32;
 pub type Octaves = i32;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PitchClassCoordinates(pub Fifths);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NoteCoordinates(pub Fifths, pub Octaves);
 
 impl From<NoteCoordinates> for (Fifths, Octaves) {
@@ -47,17 +47,17 @@ impl From<NoteCoordinates> for (Fifths, Octaves) {
 }
 
 // only used as input to conversion e.g. PitchCoordinates to Pitch
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct IntervalCoordinates(pub Fifths, pub Octaves, pub Direction);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PitchCoordinates {
     PitchClass(PitchClassCoordinates),
     Note(NoteCoordinates),
     Interval(IntervalCoordinates),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Pitch {
     pub(crate) step: usize,
     pub(crate) alt: i32,
@@ -65,7 +65,7 @@ pub struct Pitch {
     pub(crate) dir: Option<Direction>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PitchParts {
     pub step: usize,
     pub alt: i32,

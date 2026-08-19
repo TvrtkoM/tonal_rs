@@ -8,13 +8,14 @@ use crate::{
     roman_numeral::RomanNumeral,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum IntervalType {
     Perfectable,
     Majorable,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Quality {
     Diminished(u8),
     Minor,
@@ -114,7 +115,7 @@ const TYPES: [IntervalType; 7] = [
     IntervalType::Majorable,   // 7  seventh
 ];
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Interval {
     pub(crate) step: usize,
     pub(crate) alt: i32,
