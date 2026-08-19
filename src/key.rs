@@ -1,9 +1,6 @@
-use std::sync::LazyLock;
-
-use regex::Regex;
-
 use crate::note::{transpose, transpose_fifths};
 use crate::pitch_note::{IntoNote, acc_to_alt, alt_to_acc};
+use crate::regexes;
 use crate::roman_numeral::IntoRomanNumeral;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -446,11 +443,9 @@ pub trait IntoMajorTonic {
     fn into_major_tonic(self) -> Option<String>;
 }
 
-static REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(b+|#+)$").unwrap());
-
 impl IntoMajorTonic for &str {
     fn into_major_tonic(self) -> Option<String> {
-        if REGEX.is_match(self) {
+        if regexes::ACCIDENTAL.is_match(self) {
             Some(transpose_fifths("C", acc_to_alt(self)))
         } else {
             None

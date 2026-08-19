@@ -1,9 +1,8 @@
 use crate::{
     error::TonalParseError,
     pitch::{Named, Pitch, PitchCoordinates},
+    regexes,
 };
-use regex::Regex;
-use std::sync::LazyLock;
 
 type NoteTokens = (String, String, String, String);
 
@@ -146,11 +145,8 @@ pub fn alt_to_acc(alt: i32) -> String {
     }
 }
 
-static NOTE_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^([a-gA-G]?)(#+|b+|x+|)(-?\d*)\s*(.*)$").unwrap());
-
 pub(crate) fn tokenize_note(s: &str) -> NoteTokens {
-    match NOTE_REGEX.captures(s) {
+    match regexes::NOTE.captures(s) {
         Some(c) => (
             c[1].to_uppercase(),
             c[2].replace('x', "##"),

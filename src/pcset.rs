@@ -1,13 +1,10 @@
-use std::sync::LazyLock;
-
-use regex::Regex;
-
 use crate::{
     collection::{range, rotated},
     error::TonalParseError,
     note::transpose,
     pitch_interval::{Interval, IntoInterval},
     pitch_note::{IntoNote, Note},
+    regexes,
 };
 
 #[derive(Debug, Clone)]
@@ -175,10 +172,8 @@ fn is_pcset_num(set: i32) -> bool {
     (0..=4095).contains(&set)
 }
 
-static REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[01]{12}$").unwrap());
-
 pub fn is_chroma(s: &str) -> bool {
-    REGEX.is_match(s)
+    regexes::CHROMA.is_match(s)
 }
 
 const IVLS: [&str; 12] = [

@@ -1,12 +1,10 @@
-use regex::Regex;
-use std::sync::LazyLock;
-
 use crate::{
     error::TonalParseError,
     pitch::{
         Direction, IntervalCoordinates, Named, NoteCoordinates, Pitch, PitchCoordinates, chroma,
         coordinates, semitones,
     },
+    regexes,
     roman_numeral::RomanNumeral,
 };
 
@@ -96,14 +94,8 @@ impl Quality {
 
 type IntervalTokens = (String, String);
 
-// group 1-2: tonal notation (number then quality)
-// group 3-4: shorthand notation (quality then number)
-static INTERVAL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(?:([-+]?\d+)(d{1,4}|m|M|P|A{1,4})|(AA|A|P|M|m|d|dd)([-+]?\d+))$").unwrap()
-});
-
 pub(crate) fn tokenize_interval(s: &str) -> IntervalTokens {
-    match INTERVAL_REGEX.captures(s) {
+    match regexes::INTERVAL.captures(s) {
         // group 1 present => tonal alternative matched (number = 1, quality = 2)
         Some(c) if c.get(1).is_some() => (c[1].to_string(), c[2].to_string()),
         // otherwise the shorthand alternative matched (quality = 3, number = 4)

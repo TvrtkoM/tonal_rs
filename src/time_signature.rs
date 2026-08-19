@@ -1,8 +1,4 @@
-use std::sync::LazyLock;
-
-use regex::Regex;
-
-use crate::{error::TonalParseError, pitch::Named};
+use crate::{error::TonalParseError, pitch::Named, regexes};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TimeSignatureType {
@@ -83,8 +79,6 @@ pub enum ParsedTimeSignature {
     Simple(u32, u32),
 }
 
-static REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d+(?:\+\d)*)/(\d+)$").unwrap());
-
 fn parse_from_int_tuple(literal: (u32, u32)) -> ParsedTimeSignature {
     ParsedTimeSignature::Simple(literal.0, literal.1)
 }
@@ -114,7 +108,7 @@ fn parse_from_str_tuple(literal: (&str, &str)) -> Option<ParsedTimeSignature> {
 }
 
 fn parse_from_str(literal: &str) -> Option<ParsedTimeSignature> {
-    match REGEX.captures(literal) {
+    match regexes::TIME_SIGNATURE.captures(literal) {
         Some(c) => parse_from_str_tuple((c[1].as_ref(), c[2].as_ref())),
         _ => None,
     }

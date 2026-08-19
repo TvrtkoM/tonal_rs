@@ -1,19 +1,13 @@
-use std::sync::LazyLock;
-
-use regex::Regex;
-
 use crate::pitch_distance::distance as dist;
 use crate::pitch_distance::transpose as tr;
 use crate::pitch_note::IntoNote;
 use crate::pitch_note::Note;
-
-static REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(_+|=|\^+|)([a-gA-G])([,']*)$").unwrap());
+use crate::regexes;
 
 type AbcTokens = (String, String, String);
 
 pub fn tokenize(str: &str) -> AbcTokens {
-    match REGEX.captures(str) {
+    match regexes::ABC.captures(str) {
         Some(c) => (c[1].to_string(), c[2].to_string(), c[3].to_string()),
         None => (String::new(), String::new(), String::new()),
     }

@@ -1,11 +1,8 @@
-use std::sync::LazyLock;
-
-use regex::Regex;
-
 use crate::{
     pitch::{Direction, Pitch, alt_to_acc},
     pitch_interval::{IntoInterval, Interval},
     pitch_note::acc_to_alt,
+    regexes,
 };
 
 #[derive(Clone, Debug)]
@@ -60,14 +57,12 @@ pub fn names(major: bool) -> &'static [&'static str] {
     if major { NAMES } else { NAMES_MINOR }
 }
 
-static REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(#+|b+|x+|)(IV|I{1,3}|VI{0,2}|iv|i{1,3}|vi{0,2})([^IViv]*)$").unwrap()
-});
-
 pub fn tokenize(s: &str) -> (String, String, String, String) {
-    let [a, b, c, d] = REGEX.captures(s).map_or(["", "", "", ""], |c| {
-        [0, 1, 2, 3].map(|i| c.get(i).map_or("", |m| m.as_str()))
-    });
+    let [a, b, c, d] = regexes::ROMAN_NUMERAL
+        .captures(s)
+        .map_or(["", "", "", ""], |c| {
+            [0, 1, 2, 3].map(|i| c.get(i).map_or("", |m| m.as_str()))
+        });
     (a.into(), b.into(), c.into(), d.into())
 }
 

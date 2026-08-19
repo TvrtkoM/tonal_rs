@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use regex::Regex;
+use crate::regexes;
 
 pub type Fraction = (f64, f64);
 
@@ -50,10 +50,8 @@ pub fn shorthands() -> Vec<&'static str> {
     VALUES.iter().map(|v| v.shorthand).collect()
 }
 
-static REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([^.]+)(\.*)$").unwrap());
-
 pub fn get(name: &str) -> Option<DurationValue> {
-    let c = REGEX.captures(name)?;
+    let c = regexes::DURATION.captures(name)?;
     let simple = &c[1];
     let dots = c[2].to_string();
     let base = VALUES

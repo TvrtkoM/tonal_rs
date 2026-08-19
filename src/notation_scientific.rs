@@ -1,6 +1,5 @@
 use crate::pitch::alt_to_acc;
-use regex::Regex;
-use std::sync::LazyLock;
+use crate::regexes;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScientificPitch {
@@ -26,11 +25,8 @@ impl ScientificPitch {
     }
 }
 
-static REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^([a-gA-G]?)(#+|b+|x+|)(-?\d*)\s*(.*)$").unwrap());
-
 pub(crate) fn tokenize(s: &str) -> (String, String, String, String) {
-    match REGEX.captures(s) {
+    match regexes::NOTE.captures(s) {
         Some(c) => (
             c[1].to_uppercase(),
             c[2].replace("x", "##"),

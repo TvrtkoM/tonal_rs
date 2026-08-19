@@ -18,6 +18,7 @@ pub mod pitch_interval;
 pub mod pitch_note;
 pub mod progression;
 pub mod range;
+pub(crate) mod regexes;
 pub mod rhythm_pattern;
 pub mod roman_numeral;
 pub mod scale;
