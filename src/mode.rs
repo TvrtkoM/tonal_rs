@@ -119,12 +119,12 @@ pub fn get<N: IntoModeName>(name: N) -> Option<Mode> {
         .cloned()
 }
 
-pub fn all() -> Vec<Mode> {
-    MODES_CACHE.clone()
+pub fn all() -> &'static [Mode] {
+    &MODES_CACHE
 }
 
-pub fn names() -> Vec<String> {
-    MODES_CACHE.iter().map(|m| m.name.clone()).collect()
+pub fn names() -> Vec<&'static str> {
+    MODES_CACHE.iter().map(|m| m.name.as_str()).collect()
 }
 
 pub fn notes<N: IntoModeName>(mode_name: N, tonic: &str) -> Vec<String> {
@@ -218,35 +218,29 @@ mod tests {
     #[test]
     fn test_set_num() {
         let set_nums: Vec<i32> = names()
-            .iter()
-            .map(|n| get(n.as_str()).unwrap().set_num)
+            .into_iter()
+            .map(|n| get(n).unwrap().set_num)
             .collect();
         assert_eq!(set_nums, [2773, 2902, 3418, 2741, 2774, 2906, 3434]);
     }
 
     #[test]
     fn test_alt() {
-        let alts: Vec<i32> = names()
-            .iter()
-            .map(|n| get(n.as_str()).unwrap().alt)
-            .collect();
+        let alts: Vec<i32> = names().into_iter().map(|n| get(n).unwrap().alt).collect();
         assert_eq!(alts, [0, 2, 4, -1, 1, 3, 5]);
     }
 
     #[test]
     fn test_triad() {
-        let triads: Vec<String> = names()
-            .iter()
-            .map(|n| get(n.as_str()).unwrap().triad)
-            .collect();
+        let triads: Vec<String> = names().into_iter().map(|n| get(n).unwrap().triad).collect();
         assert_eq!(triads, ["", "m", "m", "", "", "m", "dim"]);
     }
 
     #[test]
     fn test_seventh() {
         let sevenths: Vec<String> = names()
-            .iter()
-            .map(|n| get(n.as_str()).unwrap().seventh)
+            .into_iter()
+            .map(|n| get(n).unwrap().seventh)
             .collect();
         assert_eq!(sevenths, ["Maj7", "m7", "m7", "Maj7", "7", "m7", "m7b5"]);
     }
