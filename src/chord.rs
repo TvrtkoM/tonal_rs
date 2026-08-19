@@ -13,12 +13,12 @@ pub struct Chord {
     pub(crate) name: String,
     pub(crate) quality: ChordQuality,
     pub(crate) set_num: i32,
-    pub(crate) chroma: String,
-    pub(crate) normalized: String,
+    pub(crate) chroma: &'static str,
+    pub(crate) normalized: &'static str,
     pub(crate) intervals: Vec<String>,
-    pub(crate) aliases: Vec<String>,
+    pub(crate) aliases: &'static [String],
     pub(crate) tonic: String,
-    pub(crate) kind: String,
+    pub(crate) kind: &'static str,
     pub(crate) root: String,
     pub(crate) bass: String,
     pub(crate) root_degree: Option<i32>,
@@ -51,11 +51,11 @@ impl Chord {
             intervals: &self.intervals,
             quality: self.quality,
             set_num: self.set_num,
-            chroma: self.chroma.as_str(),
-            normalized: self.normalized.as_str(),
-            aliases: &self.aliases,
+            chroma: self.chroma,
+            normalized: self.normalized,
+            aliases: self.aliases,
             tonic: self.tonic.as_str(),
-            kind: self.kind.as_str(),
+            kind: self.kind,
             root: self.root.as_str(),
             bass: self.bass.as_str(),
             root_degree: self.root_degree,
@@ -230,12 +230,12 @@ pub fn get_chord(
         symbol: chord_symbol(chord_type, type_name, root, bass_pc, tonic_pc),
         quality: chord_type.quality,
         set_num: chord_type.set_num,
-        chroma: chord_type.chroma.clone(),
-        normalized: chord_type.normalized.clone(),
+        chroma: chord_type.chroma.as_str(),
+        normalized: chord_type.normalized.as_str(),
         intervals,
-        aliases: chord_type.aliases.clone(),
+        aliases: &chord_type.aliases,
         tonic: tonic_pc.to_string(),
-        kind: chord_type.name.clone(),
+        kind: chord_type.name.as_str(),
         root: root.map_or(String::new(), |r| r.pc.clone()),
         bass: if has_bass {
             bass_pc.to_string()
@@ -314,7 +314,7 @@ pub fn chord_scales(name: &str) -> Vec<String> {
         return vec![];
     };
 
-    let is_chord_included = is_superset_of(chord.chroma.as_str());
+    let is_chord_included = is_superset_of(chord.chroma);
 
     scale_types()
         .iter()
@@ -333,7 +333,7 @@ pub fn extended(name: &str) -> Vec<String> {
         return vec![];
     };
 
-    let is_superset = is_superset_of(chord.chroma.as_str());
+    let is_superset = is_superset_of(chord.chroma);
 
     chord_types()
         .iter()
@@ -356,7 +356,7 @@ pub fn reduced(name: &str) -> Vec<String> {
         return vec![];
     };
 
-    let is_subset = is_subset_of(chord.chroma.as_str());
+    let is_subset = is_subset_of(chord.chroma);
 
     chord_types()
         .iter()

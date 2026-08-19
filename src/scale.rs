@@ -12,10 +12,10 @@ use crate::{
 pub struct Scale {
     pub(crate) name: String,
     pub(crate) set_num: i32,
-    pub(crate) chroma: String,
-    pub(crate) normalized: String,
-    pub(crate) intervals: Vec<String>,
-    pub(crate) aliases: Vec<String>,
+    pub(crate) chroma: &'static str,
+    pub(crate) normalized: &'static str,
+    pub(crate) intervals: &'static [String],
+    pub(crate) aliases: &'static [String],
     pub(crate) tonic: String,
     pub(crate) kind: String,
     pub(crate) notes: Vec<String>,
@@ -99,12 +99,12 @@ fn parse_tuple(src: (&str, &str)) -> Option<Scale> {
 
     Some(Scale {
         name,
-        normalized: st.normalized.clone(),
-        intervals: st.intervals.clone(),
+        normalized: st.normalized.as_str(),
+        intervals: st.intervals.as_slice(),
         kind: kind.clone(),
         set_num: st.set_num,
-        chroma: st.chroma.clone(),
-        aliases: st.aliases.clone(),
+        chroma: st.chroma.as_str(),
+        aliases: &st.aliases,
         tonic,
         notes,
     })
@@ -183,11 +183,11 @@ pub fn detect(notes: &[&str], options: ScaleDetectOptions) -> Vec<String> {
 
 pub fn extended(name: &str) -> Vec<String> {
     let chroma = if is_chroma(name) {
-        name.to_string()
+        name
     } else {
-        get(name).map_or(String::new(), |s| s.chroma)
+        get(name).map_or("", |s| s.chroma)
     };
-    let is_superset = is_superset_of(chroma.as_str());
+    let is_superset = is_superset_of(chroma);
 
     scale_types()
         .iter()
@@ -202,8 +202,8 @@ pub fn extended(name: &str) -> Vec<String> {
 }
 
 pub fn reduced(name: &str) -> Vec<String> {
-    let chroma = get(name).map_or(String::new(), |s| s.chroma);
-    let is_subset = is_subset_of(chroma.as_str());
+    let chroma = get(name).map_or("", |s| s.chroma);
+    let is_subset = is_subset_of(chroma);
 
     scale_types()
         .iter()
@@ -245,10 +245,10 @@ pub fn mode_names(name: &str) -> Vec<(String, String)> {
     let tonics = if s.tonic.is_empty() {
         s.intervals
     } else {
-        s.notes
+        s.notes.as_slice()
     };
 
-    modes(s.chroma.as_str(), true)
+    modes(s.chroma, true)
         .iter()
         .enumerate()
         .filter_map(|(i, chroma)| {
@@ -309,8 +309,8 @@ pub fn range_of<S: IntoScaleNotes>(scale: S) -> impl Fn(&str, &str) -> Vec<Strin
 
 pub fn degrees<S: IntoScale>(s: S) -> impl Fn(i32) -> String {
     let (intervals, tonic) = match get(s) {
-        Some(s) => (s.intervals, Some(s.tonic)),
-        None => (Vec::new(), None),
+        Some(s) => (s.intervals.to_owned(), Some(s.tonic)),
+        None => (vec![], None),
     };
     let transpose = tonic_intervals_transposer(intervals, tonic);
     move |degree| {
@@ -324,7 +324,7 @@ pub fn degrees<S: IntoScale>(s: S) -> impl Fn(i32) -> String {
 
 pub fn steps<S: IntoScale>(s: S) -> impl Fn(i32) -> String {
     let (intervals, tonic) = match get(s) {
-        Some(s) => (s.intervals, Some(s.tonic)),
+        Some(s) => (s.intervals.to_owned(), Some(s.tonic)),
         None => (Vec::new(), None),
     };
     tonic_intervals_transposer(intervals, tonic)
