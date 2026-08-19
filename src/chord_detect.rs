@@ -68,7 +68,7 @@ fn has_non_perfect_fifth(chroma_number: u16) -> bool {
 }
 
 fn has_any_third_and_perfect_fifth_and_any_seventh(chord_type: &ChordType) -> bool {
-    let chroma_num = chord_type.chroma.as_str().pcset_num() as u16;
+    let chroma_num = chord_type.set_num as u16;
     has_any_third(chroma_num) && has_perfect_fifth(chroma_num) && has_any_seventh(chroma_num)
 }
 
@@ -171,7 +171,12 @@ mod tests {
     }
 
     fn detect_pf(source: &[&str], assume_perfect_fifth: bool) -> Vec<String> {
-        detect(source, DetectOptions { assume_perfect_fifth })
+        detect(
+            source,
+            DetectOptions {
+                assume_perfect_fifth,
+            },
+        )
     }
 
     #[test]
