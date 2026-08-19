@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     chord_type::{ChordType, all},
     pcset::{IntoPcset, modes},
@@ -13,24 +11,25 @@ struct FoundChord {
 }
 
 struct NamedSet {
-    pc_to_name: HashMap<usize, String>,
+    pc_to_name: [Option<String>; 12],
 }
 
 impl NamedSet {
     pub fn from(notes: &[&str]) -> Self {
-        let mut map = HashMap::new();
+        let mut arr: [Option<String>; 12] = Default::default();
         for n in notes {
             let Some(note) = n.into_note() else {
                 continue;
             };
-            let chroma = note.chroma as usize;
-            map.entry(chroma).or_insert(note.name);
+            if let Some(slot) = arr.get_mut(note.chroma as usize) {
+                slot.get_or_insert(note.name);
+            }
         }
-        Self { pc_to_name: map }
+        Self { pc_to_name: arr }
     }
 
     pub fn get(&self, chroma: usize) -> Option<&String> {
-        self.pc_to_name.get(&chroma)
+        self.pc_to_name.get(chroma)?.as_ref()
     }
 }
 
