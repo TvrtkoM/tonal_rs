@@ -496,6 +496,16 @@ mod tests {
     }
 
     #[test]
+    fn test_key_signature_must_be_all_flats_or_all_sharps() {
+        for valid in ["b", "bbb", "#", "####"] {
+            assert!(major_tonic_from_key_signature(valid).is_some(), "{valid}");
+        }
+        for invalid in ["b#", "#b", "#b#", "b3", "3b", "#x", " #", "#\n", "", "x"] {
+            assert_eq!(major_tonic_from_key_signature(invalid), None, "{invalid:?}");
+        }
+    }
+
+    #[test]
     fn test_major_key_signature() {
         let signatures: Vec<String> = "C D E F G A B"
             .split(' ')

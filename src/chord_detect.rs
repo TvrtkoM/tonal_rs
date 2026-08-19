@@ -46,24 +46,20 @@ const NON_PERFECT_FIFTH: u16 = 40;
 
 const ANY_SEVENTH: u16 = 3;
 
-fn test_chroma_number(bitmask: u16) -> impl Fn(u16) -> bool {
-    move |chroma_number| (chroma_number & bitmask) > 0
-}
-
 fn has_any_third(chroma_number: u16) -> bool {
-    test_chroma_number(ANY_THIRD)(chroma_number)
+    (chroma_number & ANY_THIRD) != 0
 }
 
 fn has_perfect_fifth(chroma_number: u16) -> bool {
-    test_chroma_number(PERFECT_FIFTH)(chroma_number)
+    (chroma_number & PERFECT_FIFTH) != 0
 }
 
 fn has_any_seventh(chroma_number: u16) -> bool {
-    test_chroma_number(ANY_SEVENTH)(chroma_number)
+    (chroma_number & ANY_SEVENTH) != 0
 }
 
 fn has_non_perfect_fifth(chroma_number: u16) -> bool {
-    test_chroma_number(NON_PERFECT_FIFTH)(chroma_number)
+    (chroma_number & NON_PERFECT_FIFTH) != 0
 }
 
 fn has_any_third_and_perfect_fifth_and_any_seventh(chord_type: &ChordType) -> bool {
