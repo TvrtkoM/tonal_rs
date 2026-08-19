@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use regex::Regex;
 
 use crate::note::{transpose, transpose_fifths};
@@ -444,10 +446,11 @@ pub trait IntoMajorTonic {
     fn into_major_tonic(self) -> Option<String>;
 }
 
+static REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(b+|#+)$").unwrap());
+
 impl IntoMajorTonic for &str {
     fn into_major_tonic(self) -> Option<String> {
-        let regex = Regex::new(r"^b+|#+$").unwrap();
-        if regex.is_match(self) {
+        if REGEX.is_match(self) {
             Some(transpose_fifths("C", acc_to_alt(self)))
         } else {
             None
