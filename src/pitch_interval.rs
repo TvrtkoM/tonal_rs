@@ -7,6 +7,7 @@ use crate::{
         Direction, IntervalCoordinates, Named, NoteCoordinates, Pitch, PitchCoordinates, chroma,
         coordinates, semitones,
     },
+    roman_numeral::RomanNumeral,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -235,6 +236,18 @@ impl IntoInterval for &Interval {
 impl IntoInterval for &Pitch {
     fn into_interval(self) -> Option<Interval> {
         Interval::try_from(self).ok()
+    }
+}
+
+impl IntoInterval for &RomanNumeral {
+    fn into_interval(self) -> Option<Interval> {
+        let pitch = Pitch {
+            step: self.step,
+            alt: self.alt,
+            oct: Some(self.oct),
+            dir: Some(self.dir),
+        };
+        pitch.into_interval()
     }
 }
 

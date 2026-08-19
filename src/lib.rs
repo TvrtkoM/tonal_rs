@@ -15,6 +15,7 @@ pub mod pitch;
 pub mod pitch_distance;
 pub mod pitch_interval;
 pub mod pitch_note;
+pub mod progression;
 pub mod range;
 pub mod roman_numeral;
 pub mod scale;
