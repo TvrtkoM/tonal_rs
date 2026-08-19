@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::{
     error::TonalParseError,
     pitch::{Named, Pitch, PitchCoordinates},
@@ -39,14 +41,6 @@ pub struct NoteParts<'a> {
 }
 
 impl Note {
-    pub fn chroma(&self) -> i32 {
-        self.chroma
-    }
-
-    pub fn midi(&self) -> Option<i32> {
-        self.midi
-    }
-
     pub fn parts(&self) -> NoteParts<'_> {
         NoteParts {
             step: self.step,
@@ -66,8 +60,8 @@ impl Note {
 }
 
 impl Named for Note {
-    fn name(&self) -> String {
-        self.name.clone()
+    fn name(&self) -> Cow<'_, str> {
+        Cow::from(self.name.as_str())
     }
 }
 
@@ -81,7 +75,7 @@ impl TryFrom<&Pitch> for Note {
         let name = p.name();
         note(&name).ok_or(TonalParseError {
             entity: String::from("note"),
-            input: name,
+            input: name.to_string(),
         })
     }
 }
@@ -184,7 +178,7 @@ fn parse(note_name: &str) -> Option<Note> {
         None => chroma - 12 * 99,
     };
     let midi = pitch.midi();
-    let name = pitch.name();
+    let name = pitch.name().to_string();
 
     let pc = format!("{}{}", letter, acc);
 

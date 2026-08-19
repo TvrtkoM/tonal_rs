@@ -50,7 +50,7 @@ pub fn transpose_with_coord<N: IntoNote, C: Into<(Fifths, Octaves)>>(note: N, co
     };
     let pitch: Pitch = (&tr).into();
     if let Some(note) = (&pitch).into_note() {
-        note.name()
+        note.name().into_owned()
     } else {
         String::new()
     }

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::{error::TonalParseError, pitch::Named, regexes};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -40,8 +42,8 @@ impl TimeSignature {
 }
 
 impl Named for TimeSignature {
-    fn name(&self) -> String {
-        self.name.clone()
+    fn name(&self) -> Cow<'_, str> {
+        Cow::from(self.name.as_str())
     }
 }
 

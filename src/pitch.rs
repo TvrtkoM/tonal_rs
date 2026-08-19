@@ -20,7 +20,7 @@ const fn make_steps_to_octs() -> [i32; 7] {
 const STEPS_TO_OCTS: [i32; 7] = make_steps_to_octs();
 
 pub trait Named {
-    fn name(&self) -> String;
+    fn name(&self) -> Cow<'_, str>;
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -156,6 +156,8 @@ impl Pitch {
     }
 }
 
+use std::borrow::Cow;
+
 pub use crate::pitch_note::alt_to_acc;
 
 pub fn step_to_letter(step: usize) -> Option<char> {
@@ -163,13 +165,13 @@ pub fn step_to_letter(step: usize) -> Option<char> {
 }
 
 impl Named for Pitch {
-    fn name(&self) -> String {
+    fn name(&self) -> Cow<'_, str> {
         let Pitch { step, alt, oct, .. } = *self;
         let Some(letter) = step_to_letter(step) else {
-            return String::new();
+            return Cow::from(String::new());
         };
         let oct = oct.map(|o| o.to_string()).unwrap_or_default();
-        format!("{}{}{}", letter, alt_to_acc(alt), oct)
+        Cow::from(format!("{}{}{}", letter, alt_to_acc(alt), oct))
     }
 }
 

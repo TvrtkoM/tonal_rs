@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::{
     error::TonalParseError,
     pitch::{
@@ -174,8 +176,8 @@ impl Interval {
 }
 
 impl Named for Interval {
-    fn name(&self) -> String {
-        self.name.clone()
+    fn name(&self) -> Cow<'_, str> {
+        Cow::from(self.name.as_str())
     }
 }
 
