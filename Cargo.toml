@@ -2,6 +2,13 @@
 name = "tonal_rs"
 version = "0.1.0"
 edition = "2024"
+description = "A music theory library — a Rust port of tonaljs. Manipulate notes, intervals, chords, scales, modes and keys."
+license = "MIT"
+repository = "https://github.com/TvrtkoM/tonal_rs"
+readme = "README.md"
+keywords = ["music", "music-theory", "midi", "chord", "scale"]
+categories = ["multimedia::audio"]
+exclude = [".envrc", "flake.nix", "flake.lock", ".direnv"]
 
 [features]
 default = []
