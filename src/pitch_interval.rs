@@ -126,7 +126,7 @@ pub struct Interval {
     pub(crate) name: String,
     pub(crate) num: i32,
     pub(crate) q: Quality,
-    pub(crate) typ: IntervalType,
+    pub(crate) kind: IntervalType,
     pub(crate) simple: i32,
     pub(crate) semitones: i32,
     pub(crate) chroma: i32,
@@ -144,7 +144,7 @@ pub struct IntervalParts<'a> {
     pub name: &'a str,
     pub num: i32,
     pub q: Quality,
-    pub typ: IntervalType,
+    pub kind: IntervalType,
     pub simple: i32,
     pub semitones: i32,
     pub chroma: i32,
@@ -166,7 +166,7 @@ impl Interval {
             name: &self.name,
             num: self.num,
             q: self.q,
-            typ: self.typ,
+            kind: self.kind,
             simple: self.simple,
             semitones: self.semitones,
             chroma: self.chroma,
@@ -302,7 +302,7 @@ fn parse(str: &str) -> Option<Interval> {
         name,
         num,
         q,
-        typ,
+        kind: typ,
         simple,
         semitones,
         chroma,
@@ -412,7 +412,7 @@ mod tests {
         assert_eq!(i.num, 4);
         assert_eq!(i.q, Quality::Diminished(1));
         assert_eq!(i.q.to_string(), "d");
-        assert_eq!(i.typ, IntervalType::Perfectable);
+        assert_eq!(i.kind, IntervalType::Perfectable);
         assert_eq!(i.alt, -1);
         assert_eq!(i.chroma, 4);
         assert_eq!(i.dir, Direction::Up);

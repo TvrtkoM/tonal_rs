@@ -35,7 +35,7 @@ pub fn invert(name: &str) -> Option<String> {
     let i = name.into_interval()?;
 
     let step = (7 - i.step).rem_euclid(7);
-    let alt = if i.typ == IntervalType::Perfectable {
+    let alt = if i.kind == IntervalType::Perfectable {
         -i.alt
     } else {
         -(i.alt + 1)
@@ -124,7 +124,7 @@ mod tests {
         assert_eq!(parts.name, "4P");
         assert_eq!(parts.num, 4);
         assert_eq!(parts.q, Quality::Perfect);
-        assert_eq!(parts.typ, IntervalType::Perfectable);
+        assert_eq!(parts.kind, IntervalType::Perfectable);
         assert_eq!(parts.simple, 4);
         assert_eq!(parts.semitones, 5);
         assert_eq!(parts.chroma, 5);
