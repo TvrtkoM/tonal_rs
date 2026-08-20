@@ -33,7 +33,7 @@ pub fn onsets(numbers: &[u32]) -> RhythmPattern {
     pattern
 }
 
-pub fn random(length: usize, probability: f64, mut rnd: impl FnMut() -> f64) -> RhythmPattern {
+pub fn random_with(length: usize, probability: f64, mut rnd: impl FnMut() -> f64) -> RhythmPattern {
     let mut pattern = RhythmPattern::new();
     for _ in 0..length {
         pattern.push(if rnd() >= probability { 1 } else { 0 });
@@ -41,11 +41,21 @@ pub fn random(length: usize, probability: f64, mut rnd: impl FnMut() -> f64) -> 
     pattern
 }
 
-pub fn probability(probabilities: &[f64], mut rnd: impl FnMut() -> f64) -> RhythmPattern {
+#[cfg(feature = "random")]
+pub fn random(length: usize, probability: f64) -> RhythmPattern {
+    random_with(length, probability, rand::random::<f64>)
+}
+
+pub fn probability_with(probabilities: &[f64], mut rnd: impl FnMut() -> f64) -> RhythmPattern {
     probabilities
         .iter()
         .map(|p| if rnd() <= *p { 1 } else { 0 })
         .collect()
+}
+
+#[cfg(feature = "random")]
+pub fn probability(probabilities: &[f64]) -> RhythmPattern {
+    probability_with(probabilities, rand::random::<f64>)
 }
 
 pub fn rotate(pattern: &[u8], rotations: i32) -> RhythmPattern {
@@ -94,24 +104,35 @@ mod tests {
     }
 
     #[test]
-    fn test_random() {
-        let pattern = random(10, 0.5, rand::random::<f64>);
-        assert_eq!(pattern.len(), 10);
-
+    fn test_random_with() {
         let mut current = 0.25;
         let sequential = || {
             current += 0.1;
             current
         };
-        assert_eq!(random(5, 0.5, sequential), [0, 0, 1, 1, 1]);
+        assert_eq!(random_with(5, 0.5, sequential), [0, 0, 1, 1, 1]);
+    }
+
+    #[cfg(feature = "random")]
+    #[test]
+    fn test_random() {
+        let pattern = random(10, 0.5);
+        assert_eq!(pattern.len(), 10);
     }
 
     #[test]
-    fn test_probability() {
+    fn test_probability_with() {
         assert_eq!(
-            probability(&[0.5, 0.2, 0.0, 1.0, 0.0], || 0.5),
+            probability_with(&[0.5, 0.2, 0.0, 1.0, 0.0], || 0.5),
             [1, 0, 0, 1, 0]
         );
+    }
+
+    #[cfg(feature = "random")]
+    #[test]
+    fn test_probability() {
+        let pattern = probability(&[0.5, 0.2, 0.0, 1.0, 0.0]);
+        assert_eq!(pattern.len(), 5);
     }
 
     #[test]

@@ -3,8 +3,12 @@ name = "tonal_rs"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+random = ["dep:rand"]
+
 [dependencies]
-rand = "0.10.2"
+rand = { version = "0.10.2", optional = true }
 regex = "1.13.1"
 
 [lints.rust]

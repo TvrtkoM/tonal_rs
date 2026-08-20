@@ -1,5 +1,3 @@
-use rand::{Rng, seq::SliceRandom};
-
 pub fn range(from: i32, to: i32) -> Vec<i32> {
     if from < to {
         (from..=to).collect()
@@ -31,12 +29,19 @@ pub fn compact<T>(vec: Vec<Option<T>>) -> Vec<T> {
     vec.into_iter().flatten().collect()
 }
 
-pub fn shuffle_with<T, R: Rng + ?Sized>(vec: &mut [T], rng: &mut R) {
-    vec.shuffle(rng);
+/// In-place Fisher–Yates shuffle driven by `rnd`, which must yield values in
+/// `[0, 1)` (each call supplies the randomness for one swap).
+pub fn shuffle_with<T>(vec: &mut [T], mut rnd: impl FnMut() -> f64) {
+    for i in (1..vec.len()).rev() {
+        // map rnd() in [0, 1) onto an index in 0..=i
+        let j = ((rnd() * (i as f64 + 1.0)) as usize).min(i);
+        vec.swap(i, j);
+    }
 }
 
+#[cfg(feature = "random")]
 pub fn shuffle<T>(vec: &mut [T]) {
-    shuffle_with(vec, &mut rand::rng());
+    shuffle_with(vec, rand::random::<f64>);
 }
 
 pub fn permutations<T: Clone>(vec: &[T]) -> Vec<Vec<T>> {
@@ -59,7 +64,6 @@ pub fn permutations<T: Clone>(vec: &[T]) -> Vec<Vec<T>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{SeedableRng, rngs::StdRng};
 
     // split a space-separated string into words — mirrors the TS `$` helper.
     fn words(s: &str) -> Vec<&str> {
@@ -101,13 +105,31 @@ mod tests {
     }
 
     #[test]
-    fn test_shuffle() {
-        // Can't reproduce the TS rnd=0.2 output (different RNG), so assert the
-        // invariant: shuffle is a permutation (same multiset), deterministic per seed.
+    fn test_shuffle_with() {
+        // assert the invariant: shuffle is a permutation (same multiset).
+        // a deterministic pseudo-random source keeps the test reproducible.
+        let mut seed = 0.123_f64;
+        let rnd = || {
+            seed = (seed * 7.0 + 0.31).fract();
+            seed
+        };
         let mut v = words("a b c d");
         let original = v.clone();
-        let mut rng = StdRng::seed_from_u64(42);
-        shuffle_with(&mut v, &mut rng);
+        shuffle_with(&mut v, rnd);
+
+        let mut got = v.clone();
+        got.sort();
+        let mut want = original.clone();
+        want.sort();
+        assert_eq!(got, want);
+    }
+
+    #[cfg(feature = "random")]
+    #[test]
+    fn test_shuffle() {
+        let mut v = words("a b c d");
+        let original = v.clone();
+        shuffle(&mut v);
 
         let mut got = v.clone();
         got.sort();
