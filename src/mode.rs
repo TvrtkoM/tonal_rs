@@ -1,3 +1,9 @@
+//! The seven diatonic modes.
+//!
+//! Look up a [`Mode`] by name with [`get`], enumerate them with [`all`] /
+//! [`names`], and derive their notes and diatonic chords for a tonic with
+//! [`notes`], [`triads`] and [`seventh_chords`].
+
 use std::borrow::Cow;
 use std::sync::LazyLock;
 
@@ -7,6 +13,9 @@ use crate::note::transpose;
 use crate::pitch::Named;
 use crate::scale_type;
 
+/// A diatonic mode (ionian, dorian, …) with its properties.
+///
+/// Fields are private; read them through [`Mode::parts`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Mode {
     pub(crate) name: String,
@@ -21,21 +30,34 @@ pub struct Mode {
     pub(crate) intervals: Vec<String>,
 }
 
+/// A borrowing, fully public view of a [`Mode`]'s fields, returned by
+/// [`Mode::parts`].
 #[derive(Debug, Clone, Copy)]
 pub struct ModeParts<'a> {
+    /// The mode name, e.g. `"dorian"`.
     pub name: &'a str,
+    /// The mode number, `0` (ionian) to `6` (locrian).
     pub mode_num: i32,
+    /// The set number.
     pub set_num: i32,
+    /// The chroma bitmap.
     pub chroma: &'a str,
+    /// The rotation-invariant chroma.
     pub normalized: &'a str,
+    /// The number of alterations relative to the major scale.
     pub alt: i32,
+    /// The triad quality symbol, e.g. `"m"` or `"dim"`.
     pub triad: &'a str,
+    /// The seventh-chord symbol, e.g. `"m7"` or `"m7b5"`.
     pub seventh: &'a str,
+    /// Alternative names, e.g. `["major"]` for ionian.
     pub aliases: &'a [String],
+    /// The intervals from the tonic.
     pub intervals: &'a [String],
 }
 
 impl Mode {
+    /// A borrowing view of all fields.
     pub fn parts(&self) -> ModeParts<'_> {
         ModeParts {
             name: &self.name,
@@ -103,7 +125,10 @@ fn to_mode(datum: &(i32, i32, i32, &str, &str, &str, &str)) -> Mode {
     }
 }
 
+/// Conversion into a mode name, implemented for `&str`, `String` and [`Mode`]
+/// references.
 pub trait IntoModeName {
+    /// The mode name.
     fn into_mode_name(self) -> Option<String>;
 }
 
@@ -125,6 +150,16 @@ impl IntoModeName for &Mode {
     }
 }
 
+/// Get a [`Mode`] by name or alias (case-insensitive).
+///
+/// Returns `None` for an unknown mode.
+///
+/// ```rust
+/// use tonal_rs::mode;
+/// assert_eq!(mode::get("dorian").unwrap().parts().triad, "m");
+/// assert_eq!(mode::get("major").unwrap().parts().name, "ionian");
+/// assert!(mode::get("nope").is_none());
+/// ```
 pub fn get<N: IntoModeName>(name: N) -> Option<Mode> {
     let key = name.into_mode_name()?.to_lowercase();
     MODES_CACHE
@@ -133,14 +168,24 @@ pub fn get<N: IntoModeName>(name: N) -> Option<Mode> {
         .cloned()
 }
 
+/// All seven modes, in order from ionian to locrian.
 pub fn all() -> &'static [Mode] {
     &MODES_CACHE
 }
 
+/// The names of all seven modes.
 pub fn names() -> Vec<&'static str> {
     MODES_CACHE.iter().map(|m| m.name.as_str()).collect()
 }
 
+/// Get the notes of a mode for a given tonic.
+///
+/// Returns an empty vector for an unknown mode.
+///
+/// ```rust
+/// use tonal_rs::mode;
+/// assert_eq!(mode::notes("dorian", "D"), ["D", "E", "F", "G", "A", "B", "C"]);
+/// ```
 pub fn notes<N: IntoModeName>(mode_name: N, tonic: &str) -> Vec<String> {
     match get(mode_name) {
         Some(mode) => mode
@@ -170,16 +215,43 @@ fn build_chords<N: IntoModeName>(column: &[&str], mode_name: N, tonic: &str) -> 
         .collect()
 }
 
+/// Get the diatonic triads of a mode for a given tonic.
+///
+/// Returns an empty vector for an unknown mode.
+///
+/// ```rust
+/// use tonal_rs::mode;
+/// assert_eq!(mode::triads("major", "C"), ["C", "Dm", "Em", "F", "G", "Am", "Bdim"]);
+/// ```
 pub fn triads<N: IntoModeName>(mode_name: N, tonic: &str) -> Vec<String> {
     let column: Vec<&str> = MODES.iter().map(|m| m.4).collect();
     build_chords(&column, mode_name, tonic)
 }
 
+/// Get the diatonic seventh chords of a mode for a given tonic.
+///
+/// Returns an empty vector for an unknown mode.
+///
+/// ```rust
+/// use tonal_rs::mode;
+/// let chords = mode::seventh_chords("major", "C");
+/// assert_eq!(chords[0], "CMaj7");
+/// assert_eq!(chords[1], "Dm7");
+/// ```
 pub fn seventh_chords<N: IntoModeName>(mode_name: N, tonic: &str) -> Vec<String> {
     let column: Vec<&str> = MODES.iter().map(|m| m.5).collect();
     build_chords(&column, mode_name, tonic)
 }
 
+/// Get the interval to transpose the tonic of `source` to the tonic of
+/// `destination` while keeping the same notes (relative modes).
+///
+/// Returns `None` for an unknown mode.
+///
+/// ```rust
+/// use tonal_rs::mode;
+/// assert_eq!(mode::distance("dorian", "major").as_deref(), Some("2M"));
+/// ```
 pub fn distance<D: IntoModeName, S: IntoModeName>(destination: D, source: S) -> Option<String> {
     let from = get(source)?;
     let to = get(destination)?;
@@ -187,6 +259,16 @@ pub fn distance<D: IntoModeName, S: IntoModeName>(destination: D, source: S) -> 
     interval::simplify(transposed.as_str())
 }
 
+/// Get the tonic of `destination` mode that shares the notes of `source` mode
+/// with the given `tonic`.
+///
+/// Returns `None` for an unknown mode.
+///
+/// ```rust
+/// use tonal_rs::mode;
+/// // A minor is relative to C major
+/// assert_eq!(mode::relative_tonic("minor", "major", "C").as_deref(), Some("A"));
+/// ```
 pub fn relative_tonic<D: IntoModeName, S: IntoModeName>(
     destination: D,
     source: S,

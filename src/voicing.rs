@@ -1,9 +1,27 @@
+//! Generate chord voicings — concrete note arrangements of a chord.
+//!
+//! [`search`] returns every voicing of a chord that fits within a note range,
+//! using a [`VoicingDictionary`]. [`get`] picks one voicing (optionally via
+//! voice leading from a previous voicing) and [`sequence`] voices a whole
+//! progression. [`get_default`] uses sensible defaults.
+
 use crate::voice_leading::{VoiceLeadingFunction, top_note_diff};
 use crate::voicing_dictionary::{self, VoicingDictionary};
 use crate::{chord, interval, note, range};
 
+/// The default note range for voicings (`C3` to `C5`).
 pub const DEFAULT_RANGE: &[&str] = &["C3", "C5"];
 
+/// Find all voicings of a chord that fit within a note range.
+///
+/// Returns an empty vector if the chord is not in the dictionary.
+///
+/// ```rust
+/// use tonal_rs::voicing;
+/// use tonal_rs::voicing_dictionary::TRIADS;
+/// let voicings = voicing::search("C", &["C3", "C5"], TRIADS);
+/// assert_eq!(voicings[0], ["C3", "E3", "G3"]);
+/// ```
 pub fn search(chord: &str, range: &[&str], dictionary: &VoicingDictionary) -> Vec<Vec<String>> {
     let (tonic, symbol, _) = chord::tokenize(chord);
 
@@ -62,6 +80,19 @@ fn render_voicing(start: &str, relative: &[String]) -> Vec<String> {
         .collect()
 }
 
+/// Get a single voicing of a chord.
+///
+/// If `last_voicing` is given, `voice_leading` chooses the voicing closest to
+/// it; otherwise the first voicing found is returned. Returns an empty vector
+/// if the chord is not in the dictionary.
+///
+/// ```rust
+/// use tonal_rs::voicing;
+/// use tonal_rs::voicing_dictionary::LEFTHAND;
+/// use tonal_rs::voice_leading::top_note_diff;
+/// let v = voicing::get("Dm7", &["F3", "A4"], LEFTHAND, top_note_diff, None);
+/// assert_eq!(v, ["F3", "A3", "C4", "E4"]);
+/// ```
 pub fn get(
     chord: &str,
     range: &[&str],
@@ -77,6 +108,15 @@ pub fn get(
     }
 }
 
+/// Get a voicing of a chord using the default range, dictionary and voice
+/// leading.
+///
+/// Returns an empty vector if the chord is not in the dictionary.
+///
+/// ```rust
+/// use tonal_rs::voicing;
+/// assert_eq!(voicing::get_default("Dm7"), ["F3", "A3", "C4", "E4"]);
+/// ```
 pub fn get_default(chord: &str) -> Vec<String> {
     get(
         chord,
@@ -87,6 +127,18 @@ pub fn get_default(chord: &str) -> Vec<String> {
     )
 }
 
+/// Voice a whole chord progression, applying voice leading between successive
+/// chords.
+///
+/// Returns one voicing per chord, each led from the previous one.
+///
+/// ```rust
+/// use tonal_rs::voicing;
+/// use tonal_rs::voicing_dictionary::TRIADS;
+/// use tonal_rs::voice_leading::top_note_diff;
+/// let seq = voicing::sequence(&["C", "F", "G"], &["F3", "A4"], TRIADS, top_note_diff, None);
+/// assert_eq!(seq[0], ["C4", "E4", "G4"]);
+/// ```
 pub fn sequence(
     chords: &[&str],
     range: &[&str],

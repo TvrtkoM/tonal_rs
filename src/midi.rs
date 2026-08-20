@@ -1,8 +1,18 @@
+//! MIDI conversions and pitch-class-set helpers.
+//!
+//! Convert between MIDI numbers, frequencies and note names ([`to_midi`],
+//! [`midi_to_freq`], [`freq_to_midi`], [`midi_to_note_name`]), and build
+//! pitch-class sets and scale/degree mappers from MIDI numbers or chroma
+//! strings ([`pcset`], [`pcset_nearest`], [`pcset_steps`], [`pcset_degrees`]).
+
 use std::f32::consts::LN_2;
 
 use crate::pitch_note::IntoNote;
 
+/// Conversion into a MIDI number, implemented for `i32` (validated to 0–127)
+/// and `&str` (a numeric string or a note name).
 pub trait ToMidi {
+    /// The MIDI number, or `None` if out of range or unparseable.
     fn to_midi(&self) -> Option<i32>;
 }
 
@@ -21,14 +31,37 @@ impl ToMidi for &str {
     }
 }
 
+/// Get the MIDI number of a note name or number.
+///
+/// ```rust
+/// use tonal_rs::midi;
+/// assert_eq!(midi::to_midi("C4"), Some(60));
+/// assert_eq!(midi::to_midi(60), Some(60));
+/// assert_eq!(midi::to_midi(128), None);
+/// ```
 pub fn to_midi<T: ToMidi>(note: T) -> Option<i32> {
     note.to_midi()
 }
 
+/// Get the frequency in Hz of a MIDI number (A4 = 69 = 440 Hz).
+///
+/// ```rust
+/// use tonal_rs::midi;
+/// assert_eq!(midi::midi_to_freq(69), 440.0);
+/// ```
 pub fn midi_to_freq(midi: i32) -> f32 {
     ((midi as f32 - 69.) / 12.).exp2() * 440.
 }
 
+/// Get the (fractional) MIDI number of a frequency in Hz.
+///
+/// Rounded to two decimal places.
+///
+/// ```rust
+/// use tonal_rs::midi;
+/// assert_eq!(midi::freq_to_midi(440.0), 69.0);
+/// assert_eq!(midi::freq_to_midi(220.0), 57.0);
+/// ```
 pub fn freq_to_midi(freq: f32) -> f32 {
     let v = (12. * (freq.ln() - 440f32.ln())) / LN_2 + 69.;
     (v * 100.).round() / 100.
@@ -42,12 +75,25 @@ const FLATS: [&str; 12] = [
     "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B",
 ];
 
+/// Options for [`midi_to_note_name`].
 #[derive(Clone, Copy, Default)]
 pub struct ToNoteNameOptions {
+    /// If `Some(true)`, return the pitch class only (no octave).
     pub pitch_class: Option<bool>,
+    /// If `Some(true)`, prefer sharps; otherwise prefer flats.
     pub sharps: Option<bool>,
 }
 
+/// Get a note name from a MIDI number.
+///
+/// Pass [`ToNoteNameOptions`] to prefer sharps or return the pitch class only.
+///
+/// ```rust
+/// use tonal_rs::midi::{self, ToNoteNameOptions};
+/// assert_eq!(midi::midi_to_note_name(61, None), "Db4");
+/// let sharps = ToNoteNameOptions { sharps: Some(true), pitch_class: None };
+/// assert_eq!(midi::midi_to_note_name(61, Some(sharps)), "C#4");
+/// ```
 pub fn midi_to_note_name(midi: i32, options: Option<ToNoteNameOptions>) -> String {
     let ToNoteNameOptions {
         pitch_class,
@@ -64,6 +110,13 @@ pub fn midi_to_note_name(midi: i32, options: Option<ToNoteNameOptions>) -> Strin
     format!("{}{}", pc, o)
 }
 
+/// Get the chroma (pitch class 0–11) of a MIDI number.
+///
+/// ```rust
+/// use tonal_rs::midi;
+/// assert_eq!(midi::chroma(60), 0);
+/// assert_eq!(midi::chroma(61), 1);
+/// ```
 pub fn chroma(midi: i32) -> i32 {
     midi.rem_euclid(12)
 }
@@ -85,7 +138,10 @@ fn pcset_from_midi(midi: &[i32]) -> Vec<i32> {
     set
 }
 
+/// Conversion into a pitch-class set (a sorted, deduplicated list of chroma
+/// 0–11), implemented for chroma strings (`"101011010101"`) and MIDI slices.
 pub trait ToPitchClassSet {
+    /// The pitch classes present, as a sorted unique list of chroma.
     fn to_pitch_class_set(self) -> Vec<i32>;
 }
 
@@ -101,10 +157,30 @@ impl ToPitchClassSet for &[i32] {
     }
 }
 
+/// Get the pitch-class set of a collection of MIDI numbers, or a chroma string.
+///
+/// Returns an empty vector for an empty input.
+///
+/// ```rust
+/// use tonal_rs::midi;
+/// assert_eq!(midi::pcset(&[62, 63, 60, 65, 70, 72][..]), [0, 2, 3, 5, 10]);
+/// assert_eq!(midi::pcset("100100100101"), [0, 3, 6, 9, 11]);
+/// ```
 pub fn pcset<T: ToPitchClassSet>(notes: T) -> Vec<i32> {
     notes.to_pitch_class_set()
 }
 
+/// Build a function mapping a MIDI number to the nearest MIDI number whose
+/// chroma is in the set.
+///
+/// The returned function yields `None` for every input when the set is empty.
+///
+/// ```rust
+/// use tonal_rs::midi;
+/// let nearest = midi::pcset_nearest(&[0, 5, 7][..]);
+/// assert_eq!(nearest(1), Some(0));
+/// assert_eq!(nearest(3), Some(5));
+/// ```
 pub fn pcset_nearest<T: ToPitchClassSet>(notes: T) -> impl Fn(i32) -> Option<i32> {
     let set = notes.to_pitch_class_set();
     move |midi: i32| -> Option<i32> {
@@ -123,6 +199,18 @@ pub fn pcset_nearest<T: ToPitchClassSet>(notes: T) -> impl Fn(i32) -> Option<i32
     }
 }
 
+/// Build a function mapping a step index to a MIDI number, given a set and a
+/// tonic MIDI number.
+///
+/// Step `0` is the tonic; steps wrap around the set, adding an octave each time.
+/// Negative steps descend.
+///
+/// ```rust
+/// use tonal_rs::midi;
+/// let scale = midi::pcset_steps("101010", 60);
+/// assert_eq!(scale(0), 60);
+/// assert_eq!(scale(3), 72);
+/// ```
 pub fn pcset_steps<T: ToPitchClassSet>(notes: T, tonic: i32) -> impl Fn(i32) -> i32 {
     let set = notes.to_pitch_class_set();
     let len = set.len() as i32;
@@ -133,6 +221,18 @@ pub fn pcset_steps<T: ToPitchClassSet>(notes: T, tonic: i32) -> impl Fn(i32) -> 
     }
 }
 
+/// Build a function mapping a 1-based degree to a MIDI number, given a set and a
+/// tonic MIDI number.
+///
+/// Like [`pcset_steps`] but 1-indexed: degree `1` is the tonic. Degree `0`
+/// returns `None`; negative degrees descend.
+///
+/// ```rust
+/// use tonal_rs::midi;
+/// let scale = midi::pcset_degrees("101010", 60);
+/// assert_eq!(scale(1), Some(60));
+/// assert_eq!(scale(0), None);
+/// ```
 pub fn pcset_degrees<T: ToPitchClassSet>(notes: T, tonic: i32) -> impl Fn(i32) -> Option<i32> {
     let steps = pcset_steps(notes, tonic);
     move |degree: i32| -> Option<i32> {

@@ -1,3 +1,10 @@
+//! Parse interval names into [`Interval`] values.
+//!
+//! This module owns the [`Interval`] type and the [`Quality`] enum, and parses
+//! interval names such as `"5P"` or `"M-3"`. The higher-level
+//! [`interval`](crate::interval) module builds on it; [`interval`] is
+//! re-exported there as `interval::get`.
+
 use std::{borrow::Cow, str::FromStr};
 
 use crate::{
@@ -10,19 +17,29 @@ use crate::{
     roman_numeral::RomanNumeral,
 };
 
+/// Whether an interval number can be perfect (unison, fourth, fifth, octave) or
+/// major/minor (second, third, sixth, seventh).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum IntervalType {
+    /// Perfectable: 1, 4, 5, 8 — can be diminished, perfect or augmented.
     Perfectable,
+    /// Majorable: 2, 3, 6, 7 — can be diminished, minor, major or augmented.
     Majorable,
 }
 
+/// The quality of an interval.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Quality {
+    /// Diminished, with the number of diminutions (`d`, `dd`, …).
     Diminished(u8),
+    /// Minor (`m`).
     Minor,
+    /// Major (`M`).
     Major,
+    /// Perfect (`P`).
     Perfect,
+    /// Augmented, with the number of augmentations (`A`, `AA`, …).
     Augmented(u8),
 }
 
@@ -58,6 +75,14 @@ impl TryFrom<&str> for Quality {
 }
 
 impl Quality {
+    /// The alteration (in semitones) this quality represents for the given
+    /// interval type.
+    ///
+    /// ```rust
+    /// use tonal_rs::pitch_interval::{Quality, IntervalType};
+    /// assert_eq!(Quality::Minor.to_alt(IntervalType::Majorable), -1);
+    /// assert_eq!(Quality::Perfect.to_alt(IntervalType::Perfectable), 0);
+    /// ```
     pub fn to_alt(self, ty: IntervalType) -> i32 {
         use IntervalType::*;
         use Quality::*;
@@ -71,6 +96,13 @@ impl Quality {
         }
     }
 
+    /// The quality corresponding to an alteration for the given interval type.
+    ///
+    /// ```rust
+    /// use tonal_rs::pitch_interval::{Quality, IntervalType};
+    /// assert_eq!(Quality::from_alt(IntervalType::Majorable, -1), Quality::Minor);
+    /// assert_eq!(Quality::from_alt(IntervalType::Perfectable, 0), Quality::Perfect);
+    /// ```
     pub fn from_alt(ty: IntervalType, alt: i32) -> Quality {
         if alt == 0 {
             if ty == IntervalType::Majorable {
@@ -117,6 +149,10 @@ const TYPES: [IntervalType; 7] = [
     IntervalType::Majorable,   // 7  seventh
 ];
 
+/// A parsed interval with all of its computed properties.
+///
+/// Fields are private; read them through [`Interval::parts`] or the accessors
+/// in the [`interval`](crate::interval) module.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Interval {
     pub(crate) step: usize,
@@ -135,28 +171,44 @@ pub struct Interval {
     pub(crate) coord: NoteCoordinates,
 }
 
+/// A borrowing, fully public view of an [`Interval`]'s fields, returned by
+/// [`Interval::parts`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct IntervalParts<'a> {
+    /// Diatonic step, `0`–`6`.
     pub step: usize,
+    /// Alteration in semitones.
     pub alt: i32,
+    /// Number of octaves spanned.
     pub oct: i32,
+    /// Direction (ascending or descending).
     pub dir: Direction,
+    /// Canonical name, e.g. `"5P"`.
     pub name: &'a str,
+    /// Interval number (negative when descending).
     pub num: i32,
+    /// Quality.
     pub q: Quality,
+    /// Whether the interval is perfectable or majorable.
     pub kind: IntervalType,
+    /// The simplified number (reduced within one octave).
     pub simple: i32,
+    /// Number of semitones spanned.
     pub semitones: i32,
+    /// Chroma (0–11).
     pub chroma: i32,
+    /// Coordinates on the line of fifths (direction folded into the sign).
     // intentionally using NoteCoordinates here for ease of transposition
     // direction is encoded struct itself and sign in NoteCoordinates
     pub coord: NoteCoordinates,
 }
 
 impl Interval {
+    /// The interval coordinates, used for transposition.
     pub fn coord(&self) -> NoteCoordinates {
         self.coord
     }
+    /// A borrowing view of all fields.
     pub fn parts(&self) -> IntervalParts<'_> {
         IntervalParts {
             step: self.step,
@@ -187,6 +239,13 @@ impl std::fmt::Display for Interval {
     }
 }
 
+/// Parse an interval name into an [`Interval`], or `None` if it is not valid.
+///
+/// ```rust
+/// use tonal_rs::pitch_interval;
+/// assert_eq!(pitch_interval::interval("5P").unwrap().parts().semitones, 7);
+/// assert!(pitch_interval::interval("nope").is_none());
+/// ```
 pub fn interval(src: &str) -> Option<Interval> {
     parse(src)
 }
@@ -219,7 +278,11 @@ impl FromStr for Interval {
     }
 }
 
+/// Conversion into an [`Interval`], implemented for interval names (`&str`),
+/// [`Interval`] values, [`Pitch`] references and roman numerals.
 pub trait IntoInterval {
+    /// Parse or convert `self` into an [`Interval`], returning `None` if
+    /// invalid.
     fn into_interval(self) -> Option<Interval>;
 }
 

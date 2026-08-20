@@ -1,3 +1,16 @@
+//! Generic collection helpers used across the crate.
+//!
+//! Small array utilities: inclusive integer [`range`], in-place and copying
+//! [`rotate`]/[`rotated`], `None`-dropping [`compact`]/[`compacted`],
+//! [`shuffle`] and [`permutations`].
+
+/// An inclusive range of integers, ascending or descending.
+///
+/// ```rust
+/// use tonal_rs::collection;
+/// assert_eq!(collection::range(-2, 2), [-2, -1, 0, 1, 2]);
+/// assert_eq!(collection::range(2, -2), [2, 1, 0, -1, -2]);
+/// ```
 pub fn range(from: i32, to: i32) -> Vec<i32> {
     if from < to {
         (from..=to).collect()
@@ -6,6 +19,15 @@ pub fn range(from: i32, to: i32) -> Vec<i32> {
     }
 }
 
+/// Rotate a slice left by `times` positions, in place (wrapping and handling
+/// negatives).
+///
+/// ```rust
+/// use tonal_rs::collection;
+/// let mut v = vec!["a", "b", "c", "d", "e"];
+/// collection::rotate(2, &mut v);
+/// assert_eq!(v, ["c", "d", "e", "a", "b"]);
+/// ```
 pub fn rotate<T>(times: i32, vec: &mut [T]) {
     let len = vec.len();
     if len == 0 {
@@ -15,22 +37,50 @@ pub fn rotate<T>(times: i32, vec: &mut [T]) {
     vec.rotate_left(n);
 }
 
+/// Like [`rotate`], but returns a new rotated `Vec` and leaves the input
+/// untouched.
+///
+/// ```rust
+/// use tonal_rs::collection;
+/// assert_eq!(collection::rotated(2, &["a", "b", "c", "d", "e"]), ["c", "d", "e", "a", "b"]);
+/// ```
 pub fn rotated<T: Clone>(times: i32, vec: &[T]) -> Vec<T> {
     let mut out = vec.to_vec();
     rotate(times, &mut out);
     out
 }
 
+/// Collect the `Some` values of a slice of `Option`s into a new `Vec` (by
+/// cloning).
+///
+/// ```rust
+/// use tonal_rs::collection;
+/// assert_eq!(collection::compacted(&[Some("a"), None, Some("c")]), ["a", "c"]);
+/// ```
 pub fn compacted<T: Clone>(vec: &[Option<T>]) -> Vec<T> {
     vec.iter().flatten().cloned().collect()
 }
 
+/// Collect the `Some` values of an owned `Vec` of `Option`s, consuming it.
+///
+/// ```rust
+/// use tonal_rs::collection;
+/// assert_eq!(collection::compact(vec![Some(1), None, Some(3)]), [1, 3]);
+/// ```
 pub fn compact<T>(vec: Vec<Option<T>>) -> Vec<T> {
     vec.into_iter().flatten().collect()
 }
 
 /// In-place Fisher–Yates shuffle driven by `rnd`, which must yield values in
 /// `[0, 1)` (each call supplies the randomness for one swap).
+///
+/// ```rust
+/// use tonal_rs::collection;
+/// let mut v = vec![1, 2, 3, 4];
+/// // a constant source that maps every swap to the identity leaves order intact
+/// collection::shuffle_with(&mut v, || 1.0);
+/// assert_eq!(v, [1, 2, 3, 4]);
+/// ```
 pub fn shuffle_with<T>(vec: &mut [T], mut rnd: impl FnMut() -> f64) {
     for i in (1..vec.len()).rev() {
         // map rnd() in [0, 1) onto an index in 0..=i
@@ -39,11 +89,30 @@ pub fn shuffle_with<T>(vec: &mut [T], mut rnd: impl FnMut() -> f64) {
     }
 }
 
+/// Shuffle a slice in place using the `rand` crate.
+///
+/// Only available with the `random` feature enabled.
+///
+/// ```rust
+/// use tonal_rs::collection;
+/// let mut v = vec![1, 2, 3, 4];
+/// collection::shuffle(&mut v);
+/// assert_eq!(v.len(), 4);
+/// ```
 #[cfg(feature = "random")]
 pub fn shuffle<T>(vec: &mut [T]) {
     shuffle_with(vec, rand::random::<f64>);
 }
 
+/// All permutations of a slice.
+///
+/// ```rust
+/// use tonal_rs::collection;
+/// assert_eq!(
+///     collection::permutations(&["a", "b"]),
+///     vec![vec!["a", "b"], vec!["b", "a"]],
+/// );
+/// ```
 pub fn permutations<T: Clone>(vec: &[T]) -> Vec<Vec<T>> {
     let Some((first, rest)) = vec.split_first() else {
         return vec![vec![]];

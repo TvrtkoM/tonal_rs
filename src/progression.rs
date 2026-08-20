@@ -1,8 +1,24 @@
+//! Convert chord progressions between concrete chords and roman numerals.
+//!
+//! [`from_roman_numerals`] turns roman numerals into chord symbols for a
+//! tonic; [`to_roman_numerals`] does the reverse.
+
 use crate::{
     chord::tokenize, note::transpose, pitch_distance::distance, pitch_interval::IntoInterval,
     pitch_note::IntoNote, roman_numeral::IntoRomanNumeral,
 };
 
+/// Turn a progression of roman numerals into chord symbols for a tonic.
+///
+/// Numerals that don't parse become empty strings in the result.
+///
+/// ```rust
+/// use tonal_rs::progression;
+/// assert_eq!(
+///     progression::from_roman_numerals("C", &["I", "IIm7", "V7"]),
+///     ["C", "Dm7", "G7"],
+/// );
+/// ```
 pub fn from_roman_numerals<N>(tonic: N, chords: &[&str]) -> Vec<String>
 where
     N: IntoNote + Clone,
@@ -23,6 +39,15 @@ where
         .collect()
 }
 
+/// Turn a progression of chord symbols into roman numerals for a tonic.
+///
+/// ```rust
+/// use tonal_rs::progression;
+/// assert_eq!(
+///     progression::to_roman_numerals("C", &["Cmaj7", "Dm7", "G7"]),
+///     ["Imaj7", "IIm7", "V7"],
+/// );
+/// ```
 pub fn to_roman_numerals<N>(tonic: N, chords: &[&str]) -> Vec<String>
 where
     N: IntoNote + Clone,

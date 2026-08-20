@@ -1,3 +1,13 @@
+//! The low-level pitch representation shared by notes and intervals.
+//!
+//! A [`Pitch`] captures the abstract components common to notes and intervals —
+//! a diatonic `step`, an alteration `alt` (accidentals), an optional octave and
+//! an optional direction. Notes ([`Note`](crate::pitch_note::Note)) and
+//! intervals ([`Interval`](crate::pitch_interval::Interval)) are built on top of
+//! it. Pitches can also be expressed as [`PitchCoordinates`] — a position in
+//! the array of fifths — which is the basis for transposition and distance.
+
+/// Semitones from C for each diatonic step `[C, D, E, F, G, A, B]`.
 pub const STEPS: [i32; 7] = [0, 2, 4, 5, 7, 9, 11];
 
 // the number of fifths of [C, D, E, F, G, A, B] (from C)
@@ -19,23 +29,32 @@ const fn make_steps_to_octs() -> [i32; 7] {
 
 const STEPS_TO_OCTS: [i32; 7] = make_steps_to_octs();
 
+/// Anything that has a musical name (a note, interval or pitch).
 pub trait Named {
+    /// The name of this entity, e.g. `"C#4"` or `"5P"`.
     fn name(&self) -> Cow<'_, str>;
 }
 
+/// The direction of an interval: ascending or descending.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(i8)]
 pub enum Direction {
+    /// Ascending (`+1`).
     Up = 1,
+    /// Descending (`-1`).
     Down = -1,
 }
 
+/// A number of fifths along the line of fifths.
 pub type Fifths = i32;
+/// A number of octaves.
 pub type Octaves = i32;
 
+/// Coordinates of a pitch class: a position on the line of fifths.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PitchClassCoordinates(pub Fifths);
 
+/// Coordinates of a note: fifths plus octaves.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NoteCoordinates(pub Fifths, pub Octaves);
 
@@ -46,17 +65,26 @@ impl From<NoteCoordinates> for (Fifths, Octaves) {
     }
 }
 
+/// Coordinates of an interval: fifths, octaves and a direction.
 // only used as input to conversion e.g. PitchCoordinates to Pitch
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct IntervalCoordinates(pub Fifths, pub Octaves, pub Direction);
 
+/// A pitch expressed as coordinates on the line of fifths.
+///
+/// The variant reflects whether the pitch is a pitch class, a note (with
+/// octave), or an interval (with octave and direction).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PitchCoordinates {
+    /// A pitch class (no octave).
     PitchClass(PitchClassCoordinates),
+    /// A note (pitch class with octave).
     Note(NoteCoordinates),
+    /// An interval (with octave span and direction).
     Interval(IntervalCoordinates),
 }
 
+/// The abstract representation of a pitch, shared by notes and intervals.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Pitch {
     pub(crate) step: usize,
@@ -65,24 +93,46 @@ pub struct Pitch {
     pub(crate) dir: Option<Direction>,
 }
 
+/// A copyable, fully public view of a [`Pitch`]'s fields, returned by
+/// [`Pitch::parts`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PitchParts {
+    /// Diatonic step, `0` (C) to `6` (B).
     pub step: usize,
+    /// Alteration in semitones (positive = sharps, negative = flats).
     pub alt: i32,
+    /// Octave, if any.
     pub oct: Option<i32>,
+    /// Direction, for intervals.
     pub dir: Option<Direction>,
 }
 
+/// The number of semitones for the given step, alteration, octave and
+/// direction.
+///
+/// ```rust
+/// use tonal_rs::pitch;
+/// // C4, measured relative to C0
+/// assert_eq!(pitch::semitones(0, 0, 4, None), 48);
+/// ```
 pub fn semitones(step: usize, alt: i32, oct: i32, dir: Option<Direction>) -> i32 {
     let dir_val = dir.map_or(1, |d| d as i32);
     dir_val * (STEPS[step] + alt + 12 * oct)
 }
 
+/// The chroma (0–11) for the given step, alteration and direction.
+///
+/// ```rust
+/// use tonal_rs::pitch;
+/// assert_eq!(pitch::chroma(0, 0, None), 0); // C
+/// assert_eq!(pitch::chroma(0, 1, None), 1); // C#
+/// ```
 pub fn chroma(step: usize, alt: i32, dir: Option<Direction>) -> i32 {
     let dir_val = dir.map_or(1, |d| d as i32);
     (dir_val * (STEPS[step] + alt)).rem_euclid(12)
 }
 
+/// Convert step/alteration/octave/direction into [`PitchCoordinates`].
 pub fn coordinates(
     step: usize,
     alt: i32,
@@ -107,19 +157,25 @@ pub fn coordinates(
 }
 
 impl Pitch {
+    /// The chroma (pitch class as a number 0–11).
     pub fn chroma(&self) -> i32 {
         chroma(self.step, self.alt, None)
     }
 
+    /// The height in semitones. For pitch classes without octave this is a
+    /// large negative value used only for ordering.
     pub fn height(&self) -> i32 {
         semitones(self.step, self.alt, self.oct.unwrap_or(-100), self.dir)
     }
 
+    /// The MIDI number, or `None` if the pitch has no octave or falls outside
+    /// the MIDI range.
     pub fn midi(&self) -> Option<i32> {
         let h = self.height();
         (self.oct.is_some() && (-12..=115).contains(&h)).then_some(h + 12)
     }
 
+    /// The pitch as [`PitchCoordinates`].
     pub fn coordinates(&self) -> PitchCoordinates {
         let Pitch {
             step,
@@ -130,22 +186,27 @@ impl Pitch {
         coordinates(step, alt, oct, dir)
     }
 
+    /// The diatonic step, `0` (C) to `6` (B).
     pub fn step(&self) -> usize {
         self.step
     }
 
+    /// The alteration in semitones (positive = sharps, negative = flats).
     pub fn alt(&self) -> i32 {
         self.alt
     }
 
+    /// The octave, if any.
     pub fn oct(&self) -> Option<i32> {
         self.oct
     }
 
+    /// The direction, for intervals.
     pub fn dir(&self) -> Option<Direction> {
         self.dir
     }
 
+    /// A copyable view of all fields.
     pub fn parts(&self) -> PitchParts {
         PitchParts {
             step: self.step,
@@ -158,8 +219,25 @@ impl Pitch {
 
 use std::borrow::Cow;
 
+/// Convert an alteration number into an accidental string
+/// (`1` => `"#"`, `-2` => `"bb"`).
+///
+/// ```rust
+/// use tonal_rs::pitch;
+/// assert_eq!(pitch::alt_to_acc(1), "#");
+/// assert_eq!(pitch::alt_to_acc(-2), "bb");
+/// ```
 pub use crate::pitch_note::alt_to_acc;
 
+/// The natural letter name for a diatonic step (`0` => `'C'`, …).
+///
+/// Returns `None` if the step is out of range.
+///
+/// ```rust
+/// use tonal_rs::pitch;
+/// assert_eq!(pitch::step_to_letter(0), Some('C'));
+/// assert_eq!(pitch::step_to_letter(9), None);
+/// ```
 pub fn step_to_letter(step: usize) -> Option<char> {
     "CDEFGAB".chars().nth(step)
 }

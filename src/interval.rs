@@ -1,3 +1,10 @@
+//! Create and manipulate music intervals.
+//!
+//! An interval is written as a number plus a quality, e.g. `"5P"` (perfect
+//! fifth) or `"3M"` (major third). Use [`get`] for all properties, the
+//! shorthand accessors for individual ones, and [`add`]/[`subtract`] for
+//! interval arithmetic.
+
 use crate::{
     pitch::{NoteCoordinates, Pitch, PitchCoordinates},
     pitch_interval::{IntervalType, IntoInterval, coord_to_interval},
@@ -5,32 +12,91 @@ use crate::{
 
 const INTERVALS: [&str; 7] = ["1P", "2M", "3M", "4P", "5P", "6m", "7m"];
 
+/// The names of the intervals within a major scale
+/// (`["1P", "2M", "3M", "4P", "5P", "6m", "7m"]`).
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::names(), ["1P", "2M", "3M", "4P", "5P", "6m", "7m"]);
+/// ```
 pub fn names() -> [&'static str; 7] {
     INTERVALS
 }
 
+/// Get an [`Interval`](crate::pitch_interval::Interval) with all of its
+/// properties from a name.
+///
+/// Returns `None` for an invalid interval.
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::get("5P").unwrap().parts().semitones, 7);
+/// assert!(interval::get("nope").is_none());
+/// ```
 pub use crate::pitch_interval::interval as get;
 
+/// Get the canonical interval name.
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::name("d5").as_deref(), Some("5d"));
+/// assert_eq!(interval::name("nope"), None);
+/// ```
 pub fn name(name: &str) -> Option<String> {
     name.into_interval().map(|i| i.name)
 }
 
+/// Get the number of semitones an interval spans.
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::semitones("5P"), Some(7));
+/// assert_eq!(interval::semitones("nope"), None);
+/// ```
 pub fn semitones(name: &str) -> Option<i32> {
     name.into_interval().map(|i| i.semitones)
 }
 
+/// Get the interval quality (`"P"`, `"m"`, `"M"`, `"d"`, `"A"`, …).
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::quality("d5").as_deref(), Some("d"));
+/// assert_eq!(interval::quality("5P").as_deref(), Some("P"));
+/// ```
 pub fn quality(name: &str) -> Option<String> {
     name.into_interval().map(|i| i.q.to_string())
 }
 
+/// Get the interval number.
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::num("d5"), Some(5));
+/// assert_eq!(interval::num("nope"), None);
+/// ```
 pub fn num(name: &str) -> Option<i32> {
     name.into_interval().map(|i| i.num)
 }
 
+/// Simplify an interval, reducing it below an octave.
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::simplify("9M").as_deref(), Some("2M"));
+/// assert_eq!(interval::simplify("2M").as_deref(), Some("2M"));
+/// ```
 pub fn simplify(name: &str) -> Option<String> {
     name.into_interval().map(|i| format!("{}{}", i.simple, i.q))
 }
 
+/// Get the inversion of an interval.
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::invert("3M").as_deref(), Some("6m"));
+/// assert_eq!(interval::invert("2m").as_deref(), Some("7M"));
+/// ```
 pub fn invert(name: &str) -> Option<String> {
     let i = name.into_interval()?;
 
@@ -55,6 +121,15 @@ pub fn invert(name: &str) -> Option<String> {
 const IN: [i32; 12] = [1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7];
 const IQ: [char; 12] = ['P', 'm', 'M', 'm', 'M', 'P', 'd', 'P', 'm', 'M', 'm', 'M'];
 
+/// Get an interval name from a number of semitones.
+///
+/// Negative values give descending intervals.
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::from_semitones(7), "5P");
+/// assert_eq!(interval::from_semitones(-7), "-5P");
+/// ```
 pub fn from_semitones(semitones: i32) -> String {
     let d = if semitones < 0 { -1 } else { 1 };
     let n = semitones.abs();
@@ -64,20 +139,59 @@ pub fn from_semitones(semitones: i32) -> String {
     format!("{}{}", d * (IN[c] + 7 * o), IQ[c])
 }
 
+/// Get the interval distance between two notes.
+///
+/// Returns an empty string if either note is invalid.
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::dist("C4", "G4"), "5P");
+/// assert_eq!(interval::dist("one", "two"), "");
+/// ```
 pub use crate::pitch_distance::distance as dist;
 
+/// Add two intervals.
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::add("3m", "5P").as_deref(), Some("7m"));
+/// assert_eq!(interval::add("nope", "5P"), None);
+/// ```
 pub fn add(a: &str, b: &str) -> Option<String> {
     combinator(a, b, |a, b| NoteCoordinates(a.0 + b.0, a.1 + b.1))
 }
 
+/// Subtract the second interval from the first.
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::subtract("5P", "3M").as_deref(), Some("3m"));
+/// assert_eq!(interval::subtract("3M", "5P").as_deref(), Some("-3m"));
+/// ```
 pub fn subtract(a: &str, b: &str) -> Option<String> {
     combinator(a, b, |a, b| NoteCoordinates(a.0 - b.0, a.1 - b.1))
 }
 
+/// Partially apply [`add`], returning a function that adds `interval` to any
+/// other interval.
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// let add_fifth = interval::add_to("5P");
+/// assert_eq!(add_fifth("3M").as_deref(), Some("7M"));
+/// assert_eq!(add_fifth("1P").as_deref(), Some("5P"));
+/// ```
 pub fn add_to(interval: &str) -> impl Fn(&str) -> Option<String> {
     move |other| add(interval, other)
 }
 
+/// Transpose an interval by a number of perfect fifths.
+///
+/// ```rust
+/// use tonal_rs::interval;
+/// assert_eq!(interval::transpose_fifths("4P", 1).as_deref(), Some("8P"));
+/// assert_eq!(interval::transpose_fifths("1P", 1).as_deref(), Some("5P"));
+/// ```
 pub fn transpose_fifths(interval: &str, fifths: i32) -> Option<String> {
     let ivl = interval.into_interval()?;
 

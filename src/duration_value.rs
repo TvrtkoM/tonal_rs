@@ -1,16 +1,30 @@
+//! Note duration values (whole, half, quarter, …) and their fractions.
+//!
+//! Parse a duration name or shorthand (with dots, e.g. `"q.."`) into a
+//! [`DurationValue`] with [`get`], reading its `value` and `fraction`. [`names`]
+//! and [`shorthands`] enumerate the known values.
+
 use std::{borrow::Cow, str::FromStr, sync::LazyLock};
 
 use crate::{error::TonalParseError, pitch::Named, regexes};
 
+/// A rhythmic fraction as `(numerator, denominator)`.
 pub type Fraction = (f64, f64);
 
+/// A note duration value with its fraction of a whole note.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DurationValue {
+    /// The value as a fraction of a whole note (a quarter note is `0.25`).
     pub value: f64,
+    /// The parsed name, e.g. `"q."`.
     pub name: String,
+    /// The value as an exact `(numerator, denominator)` fraction.
     pub fraction: Fraction,
+    /// The single-letter shorthand, e.g. `"q"`.
     pub shorthand: &'static str,
+    /// The trailing dots, e.g. `"."` or `".."`.
     pub dots: String,
+    /// All names for this value, e.g. `["quarter", "crotchet"]`.
     pub names: &'static [&'static str],
 }
 
@@ -48,6 +62,7 @@ fn build_values() -> Vec<DurationValue> {
     v
 }
 
+/// All duration names, from largest to smallest.
 pub fn names() -> Vec<&'static str> {
     let mut res: Vec<&'static str> = vec![];
 
@@ -58,10 +73,22 @@ pub fn names() -> Vec<&'static str> {
     res
 }
 
+/// All duration shorthands (`"w"`, `"h"`, `"q"`, …).
 pub fn shorthands() -> Vec<&'static str> {
     VALUES.iter().map(|v| v.shorthand).collect()
 }
 
+/// Parse a duration name or shorthand (with optional dots) into a
+/// [`DurationValue`].
+///
+/// Returns `None` for an unknown duration.
+///
+/// ```rust
+/// use tonal_rs::duration_value;
+/// assert_eq!(duration_value::get("q").unwrap().value, 0.25);
+/// assert_eq!(duration_value::get("q").unwrap().fraction, (1.0, 4.0));
+/// assert!(duration_value::get("zz").is_none());
+/// ```
 pub fn get(name: &str) -> Option<DurationValue> {
     let c = regexes::DURATION.captures(name)?;
     let simple = &c[1];
@@ -101,10 +128,28 @@ impl FromStr for DurationValue {
     }
 }
 
+/// Get the value of a duration as a fraction of a whole note.
+///
+/// Returns `0.` for an unknown duration.
+///
+/// ```rust
+/// use tonal_rs::duration_value;
+/// assert_eq!(duration_value::value("q"), 0.25);
+/// assert_eq!(duration_value::value("zz"), 0.0);
+/// ```
 pub fn value(name: &str) -> f64 {
     get(name).map_or(0., |d| d.value)
 }
 
+/// Get the exact `(numerator, denominator)` fraction of a duration.
+///
+/// Returns `(0., 0.)` for an unknown duration.
+///
+/// ```rust
+/// use tonal_rs::duration_value;
+/// assert_eq!(duration_value::fraction("q"), (1.0, 4.0));
+/// assert_eq!(duration_value::fraction("zz"), (0.0, 0.0));
+/// ```
 pub fn fraction(name: &str) -> Fraction {
     get(name).map_or((0., 0.), |d| d.fraction)
 }

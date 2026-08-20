@@ -1,3 +1,11 @@
+//! Build and query scales.
+//!
+//! A scale pairs a scale type (see [`scale_type`](crate::scale_type)) with a
+//! tonic. Use [`get`] to build a [`Scale`] from a name like `"C major"`,
+//! reading its `notes`, `intervals` and related data. Other functions detect
+//! scales from notes ([`detect`]), find related scales ([`extended`],
+//! [`reduced`]), and map degrees or steps to notes ([`degrees`], [`steps`]).
+
 use std::{borrow::Cow, str::FromStr};
 
 use crate::{
@@ -12,6 +20,9 @@ use crate::{
     scale_type::{all as scale_types, get as get_scale_type, names as scale_type_names},
 };
 
+/// A scale: a scale type applied to a tonic, with its resulting notes.
+///
+/// Fields are private; read them through [`Scale::parts`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct Scale {
     pub(crate) name: String,
@@ -25,20 +36,32 @@ pub struct Scale {
     pub(crate) notes: Vec<String>,
 }
 
+/// A borrowing, fully public view of a [`Scale`]'s fields, returned by
+/// [`Scale::parts`].
 #[derive(Clone, Copy, Debug)]
 pub struct ScaleParts<'a> {
+    /// Full name, e.g. `"C major"` (or just the type when there is no tonic).
     pub name: &'a str,
+    /// Set number of the scale type.
     pub set_num: i32,
+    /// Chroma bitmap of the scale type.
     pub chroma: &'a str,
+    /// Rotation-invariant chroma.
     pub normalized: &'a str,
+    /// Intervals from the tonic.
     pub intervals: &'a [String],
+    /// Alternative type names.
     pub aliases: &'a [String],
+    /// The tonic note, or empty if the scale has no tonic.
     pub tonic: &'a str,
+    /// The scale-type name, e.g. `"major"`.
     pub kind: &'a str,
+    /// The scale notes (empty when there is no tonic).
     pub notes: &'a [String],
 }
 
 impl Scale {
+    /// A borrowing view of all fields.
     pub fn parts(&self) -> ScaleParts<'_> {
         ScaleParts {
             name: &self.name,
@@ -66,6 +89,14 @@ impl std::fmt::Display for Scale {
     }
 }
 
+/// Split a scale name into `(tonic, type)`.
+///
+/// ```rust
+/// use tonal_rs::scale;
+/// let (tonic, kind) = scale::tokenize("C major");
+/// assert_eq!(tonic, "C");
+/// assert_eq!(kind, "major");
+/// ```
 pub fn tokenize(name: &str) -> (String, String) {
     let head = match name.find(' ') {
         Some(i) => &name[..i],
@@ -88,6 +119,7 @@ pub fn tokenize(name: &str) -> (String, String) {
     (tonic.name, typ)
 }
 
+/// All known scale-type names.
 pub fn names() -> Vec<&'static str> {
     scale_type_names()
 }
@@ -131,7 +163,10 @@ fn parse_str(src: &str) -> Option<Scale> {
     parse_tuple((t1.as_str(), t2.as_str()))
 }
 
+/// Conversion into a [`Scale`], implemented for a name (`&str`) or a
+/// `(tonic, type)` tuple.
 pub trait IntoScale {
+    /// Parse or build a [`Scale`], returning `None` if the type is unknown.
     fn into_scale(self) -> Option<Scale>;
 }
 
@@ -167,16 +202,41 @@ impl FromStr for Scale {
     }
 }
 
+/// Get a [`Scale`] from a name or `(tonic, type)` tuple.
+///
+/// Returns `None` for an unknown scale type.
+///
+/// ```rust
+/// use tonal_rs::scale;
+/// assert_eq!(
+///     scale::get("C major").unwrap().parts().notes.to_vec(),
+///     ["C", "D", "E", "F", "G", "A", "B"],
+/// );
+/// assert!(scale::get("C nope").is_none());
+/// ```
 pub fn get<T: IntoScale>(src: T) -> Option<Scale> {
     src.into_scale()
 }
 
+/// Options for [`detect`].
 #[derive(Debug, Clone, Default)]
 pub struct ScaleDetectOptions {
     tonic: Option<String>,
     exact_match: bool,
 }
 
+/// Detect the scales that a set of notes could belong to.
+///
+/// The first note (or `options.tonic`) is used as the tonic. With
+/// `exact_match`, only scales matching the notes exactly are returned;
+/// otherwise supersets are included too. Returns an empty vector when no notes
+/// are given or the tonic is invalid.
+///
+/// ```rust
+/// use tonal_rs::scale::{self, ScaleDetectOptions};
+/// let found = scale::detect(&["C", "D", "E", "F", "G", "A", "B"], ScaleDetectOptions::default());
+/// assert_eq!(found[0], "C major");
+/// ```
 pub fn detect(notes: &[&str], options: ScaleDetectOptions) -> Vec<String> {
     let notes_chroma = chroma(notes);
     let tonic = if let Some(t) = options.tonic {
@@ -221,6 +281,11 @@ pub fn detect(notes: &[&str], options: ScaleDetectOptions) -> Vec<String> {
     results
 }
 
+/// Get the names of all scales that are supersets of the given scale (contain
+/// all its notes and at least one more).
+///
+/// Accepts a scale name or a chroma string. Returns an empty vector for invalid
+/// input.
 pub fn extended(name: &str) -> Vec<String> {
     let chroma = if is_chroma(name) {
         name
@@ -241,6 +306,10 @@ pub fn extended(name: &str) -> Vec<String> {
         .collect()
 }
 
+/// Get the names of all scales that are subsets of the given scale (all their
+/// notes are contained in it).
+///
+/// Returns an empty vector for invalid input.
 pub fn reduced(name: &str) -> Vec<String> {
     let chroma = get(name).map_or("", |s| s.chroma);
     let is_subset = is_subset_of(chroma);
@@ -257,6 +326,16 @@ pub fn reduced(name: &str) -> Vec<String> {
         .collect()
 }
 
+/// Get the unique pitch classes of a set of notes, sorted starting from the
+/// first note as tonic.
+///
+/// Returns an empty vector for an empty input.
+///
+/// ```rust
+/// use tonal_rs::scale;
+/// assert_eq!(scale::scale_notes(&["C4", "e3", "g3"]), ["C", "E", "G"]);
+/// assert_eq!(scale::scale_notes(&["C4", "c3", "C5", "C4", "c4"]), ["C"]);
+/// ```
 pub fn scale_notes(notes: &[&str]) -> Vec<String> {
     let pcset: Vec<_> = notes
         .iter()
@@ -275,6 +354,18 @@ pub fn scale_notes(notes: &[&str]) -> Vec<String> {
     rotated(pos as i32, &scale)
 }
 
+/// Get the modes of a scale as `(tonic, mode_name)` pairs.
+///
+/// Only rotations that correspond to a named scale are included. Returns an
+/// empty vector for an invalid scale.
+///
+/// ```rust
+/// use tonal_rs::scale;
+/// let modes = scale::mode_names("C major");
+/// assert_eq!(modes[0].0, "C");
+/// assert_eq!(modes[0].1, "major");
+/// assert_eq!(modes[1].1, "dorian");
+/// ```
 pub fn mode_names(name: &str) -> Vec<(String, String)> {
     let s = get(name);
 
@@ -298,7 +389,10 @@ pub fn mode_names(name: &str) -> Vec<(String, String)> {
         .collect()
 }
 
+/// Conversion into a list of scale notes, implemented for a scale name
+/// (`&str`) or an explicit slice of note names.
 pub trait IntoScaleNotes {
+    /// The scale notes.
     fn into_scale_notes(self) -> Vec<String>;
 }
 
@@ -335,6 +429,17 @@ where
     }
 }
 
+/// Build a function returning the scale notes between two notes (inclusive).
+///
+/// The returned function yields an empty vector if either endpoint is invalid.
+///
+/// ```rust
+/// use tonal_rs::scale;
+/// let range = scale::range_of("C major");
+/// let notes = range("C4", "C5");
+/// assert_eq!(notes.first().unwrap(), "C4");
+/// assert_eq!(notes.last().unwrap(), "C5");
+/// ```
 pub fn range_of<S: IntoScaleNotes>(scale: S) -> impl Fn(&str, &str) -> Vec<String> {
     let get_name = get_note_name_of(scale);
 
@@ -347,6 +452,17 @@ pub fn range_of<S: IntoScaleNotes>(scale: S) -> impl Fn(&str, &str) -> Vec<Strin
     }
 }
 
+/// Build a function mapping a 1-based scale degree to a note.
+///
+/// Degree `0` returns an empty string; negative degrees descend.
+///
+/// ```rust
+/// use tonal_rs::scale;
+/// let d = scale::degrees("C major");
+/// assert_eq!(d(1), "C");
+/// assert_eq!(d(2), "D");
+/// assert_eq!(d(0), "");
+/// ```
 pub fn degrees<S: IntoScale>(s: S) -> impl Fn(i32) -> String {
     let (intervals, tonic) = match get(s) {
         Some(s) => (s.intervals.to_owned(), Some(s.tonic)),
@@ -362,6 +478,16 @@ pub fn degrees<S: IntoScale>(s: S) -> impl Fn(i32) -> String {
     }
 }
 
+/// Build a function mapping a 0-based scale step to a note.
+///
+/// Like [`degrees`] but 0-indexed: step `0` is the tonic.
+///
+/// ```rust
+/// use tonal_rs::scale;
+/// let s = scale::steps("C major");
+/// assert_eq!(s(0), "C");
+/// assert_eq!(s(1), "D");
+/// ```
 pub fn steps<S: IntoScale>(s: S) -> impl Fn(i32) -> String {
     let (intervals, tonic) = match get(s) {
         Some(s) => (s.intervals.to_owned(), Some(s.tonic)),

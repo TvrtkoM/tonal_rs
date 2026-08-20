@@ -1,3 +1,10 @@
+//! Convert between ABC notation and scientific notation.
+//!
+//! ABC notation writes notes like `C`, `c`, `^C`, `_B,`. This module converts
+//! to and from scientific notation ([`abc_to_scientific_notation`],
+//! [`scientific_to_abc_notation`]) and offers [`transpose`] and [`distance`]
+//! that work directly on ABC note strings.
+
 use crate::pitch_distance::distance as dist;
 use crate::pitch_distance::transpose as tr;
 use crate::pitch_note::IntoNote;
@@ -6,6 +13,15 @@ use crate::regexes;
 
 type AbcTokens = (String, String, String);
 
+/// Split an ABC note into `(accidental, letter, octave)`.
+///
+/// ```rust
+/// use tonal_rs::abc_notation;
+/// let (acc, letter, oct) = abc_notation::tokenize("^C,");
+/// assert_eq!(acc, "^");
+/// assert_eq!(letter, "C");
+/// assert_eq!(oct, ",");
+/// ```
 pub fn tokenize(str: &str) -> AbcTokens {
     match regexes::ABC.captures(str) {
         Some(c) => (c[1].to_string(), c[2].to_string(), c[3].to_string()),
@@ -13,6 +29,16 @@ pub fn tokenize(str: &str) -> AbcTokens {
     }
 }
 
+/// Convert an ABC note to scientific notation.
+///
+/// Returns an empty string for an invalid ABC note.
+///
+/// ```rust
+/// use tonal_rs::abc_notation;
+/// assert_eq!(abc_notation::abc_to_scientific_notation("C"), "C4");
+/// assert_eq!(abc_notation::abc_to_scientific_notation("^c"), "C#5");
+/// assert_eq!(abc_notation::abc_to_scientific_notation("nope"), "");
+/// ```
 pub fn abc_to_scientific_notation(s: &str) -> String {
     let (acc, letter, oct) = tokenize(s);
     let Some(first) = letter.chars().next() else {
@@ -38,6 +64,15 @@ pub fn abc_to_scientific_notation(s: &str) -> String {
     format!("{}{}{}", first, a, o)
 }
 
+/// Convert a scientific-notation note to ABC notation.
+///
+/// Returns an empty string if the note has no octave or is invalid.
+///
+/// ```rust
+/// use tonal_rs::abc_notation;
+/// assert_eq!(abc_notation::scientific_to_abc_notation("C#5"), "^c");
+/// assert_eq!(abc_notation::scientific_to_abc_notation("C"), "");
+/// ```
 pub fn scientific_to_abc_notation(s: &str) -> String {
     let note = s.into_note();
     let Some(note) = note else {
@@ -72,10 +107,26 @@ pub fn scientific_to_abc_notation(s: &str) -> String {
     format!("{}{}{}", a, l, o)
 }
 
+/// Transpose an ABC note by an interval, returning an ABC note.
+///
+/// Returns an empty string if the note or interval is invalid.
+///
+/// ```rust
+/// use tonal_rs::abc_notation;
+/// assert_eq!(abc_notation::transpose("C", "3M"), "E");
+/// ```
 pub fn transpose(note: &str, interval: &str) -> String {
     scientific_to_abc_notation(&tr(abc_to_scientific_notation(note).as_str(), interval))
 }
 
+/// Get the interval between two ABC notes.
+///
+/// Returns an empty string if either note is invalid.
+///
+/// ```rust
+/// use tonal_rs::abc_notation;
+/// assert_eq!(abc_notation::distance("C", "G"), "5P");
+/// ```
 pub fn distance(from: &str, to: &str) -> String {
     dist(
         abc_to_scientific_notation(from).as_str(),

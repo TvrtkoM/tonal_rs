@@ -1,3 +1,11 @@
+//! Pitch-class sets and set-theory operations.
+//!
+//! A pitch-class set is the collection of pitch classes (0–11) present in a
+//! group of notes or intervals, represented as a 12-bit chroma string
+//! (`"101011010101"`) or its integer `set_num`. This module builds
+//! [`Pcset`]s and provides set operations: [`is_subset_of`],
+//! [`is_superset_of`], [`is_equal`], [`modes`], [`filter`] and more.
+
 use std::{borrow::Cow, str::FromStr};
 
 use crate::{
@@ -10,6 +18,9 @@ use crate::{
     regexes,
 };
 
+/// A pitch-class set with its chroma, set number and intervals.
+///
+/// Fields are private; read them through [`Pcset::parts`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pcset {
     pub(crate) name: String,
@@ -19,16 +30,24 @@ pub struct Pcset {
     pub(crate) intervals: Vec<String>,
 }
 
+/// A borrowing, fully public view of a [`Pcset`]'s fields, returned by
+/// [`Pcset::parts`].
 #[derive(Debug, Clone, Copy)]
 pub struct PcsetParts<'a> {
+    /// The set name (usually empty).
     pub name: &'a str,
+    /// The set number (chroma as an integer).
     pub set_num: i32,
+    /// The 12-character chroma bitmap.
     pub chroma: &'a str,
+    /// The rotation-invariant chroma.
     pub normalized: &'a str,
+    /// The intervals from the lowest pitch class.
     pub intervals: &'a [String],
 }
 
 impl Pcset {
+    /// A borrowing view of all fields.
     pub fn parts(&self) -> PcsetParts<'_> {
         PcsetParts {
             name: &self.name,
@@ -75,9 +94,13 @@ impl FromStr for Pcset {
     }
 }
 
+/// Conversion into a pitch-class set, implemented for chroma strings, set
+/// numbers (`i32`), [`Pcset`] references, and slices of notes/intervals.
 pub trait IntoPcset {
+    /// The full [`Pcset`], or `None` if the input is not a valid set.
     fn into_pcset(self) -> Option<Pcset>;
 
+    /// The set number, or `0` if invalid.
     fn pcset_num(self) -> i32
     where
         Self: Sized,
@@ -85,6 +108,7 @@ pub trait IntoPcset {
         self.into_pcset().map_or(0, |p| p.set_num)
     }
 
+    /// The chroma string, or `None` if invalid.
     fn pcset_chroma(self) -> Option<String>
     where
         Self: Sized,
@@ -181,6 +205,13 @@ fn is_pcset_num(set: i32) -> bool {
     (0..=4095).contains(&set)
 }
 
+/// Whether a string is a valid 12-character chroma bitmap (`"101011010101"`).
+///
+/// ```rust
+/// use tonal_rs::pcset;
+/// assert!(pcset::is_chroma("101011010101"));
+/// assert!(!pcset::is_chroma("nope"));
+/// ```
 pub fn is_chroma(s: &str) -> bool {
     regexes::CHROMA.is_match(s)
 }
@@ -198,23 +229,64 @@ fn chroma_to_intervals(chroma: &str) -> Vec<String> {
         .collect()
 }
 
+/// Get a [`Pcset`] from a chroma string, set number, or note/interval list.
+///
+/// Returns `None` for invalid input.
+///
+/// ```rust
+/// use tonal_rs::pcset;
+/// assert_eq!(pcset::get("101011010101").unwrap().parts().set_num, 2773);
+/// assert!(pcset::get("nope").is_none());
+/// ```
 pub fn get<T: IntoPcset>(set: T) -> Option<Pcset> {
     set.into_pcset()
 }
 
+/// Get the set number of a pitch-class set, or `0` if invalid.
+///
+/// ```rust
+/// use tonal_rs::pcset;
+/// assert_eq!(pcset::num("101011010101"), 2773);
+/// assert_eq!(pcset::num("nope"), 0);
+/// ```
 pub fn num<T: IntoPcset>(set: T) -> i32 {
     set.pcset_num()
 }
 
+/// Get the chroma string of a pitch-class set.
+///
+/// Returns all-zeros (`"000000000000"`) for invalid input.
+///
+/// ```rust
+/// use tonal_rs::pcset;
+/// assert_eq!(pcset::chroma(&["C", "E", "G"][..]), "100010010000");
+/// assert_eq!(pcset::chroma("nope"), "000000000000");
+/// ```
 pub fn chroma<T: IntoPcset>(set: T) -> String {
     set.pcset_chroma()
         .unwrap_or_else(|| String::from(EMPTY_CHROMA))
 }
 
+/// Get the intervals of a pitch-class set (from its lowest pitch class).
+///
+/// Returns an empty vector for invalid input.
+///
+/// ```rust
+/// use tonal_rs::pcset;
+/// assert_eq!(pcset::intervals("100010010000"), ["1P", "3M", "5P"]);
+/// ```
 pub fn intervals<T: IntoPcset>(set: T) -> Vec<String> {
     set.into_pcset().map(|p| p.intervals).unwrap_or_default()
 }
 
+/// Get the notes of a pitch-class set, spelled from C.
+///
+/// Returns an empty vector for invalid input.
+///
+/// ```rust
+/// use tonal_rs::pcset;
+/// assert_eq!(pcset::notes("100010010000"), ["C", "E", "G"]);
+/// ```
 pub fn notes<T: IntoPcset>(set: T) -> Vec<String> {
     let Some(pcset) = set.into_pcset() else {
         return vec![];
@@ -227,6 +299,8 @@ pub fn notes<T: IntoPcset>(set: T) -> Vec<String> {
         .collect()
 }
 
+/// Get all 2048 chroma strings for sets that include the first pitch class
+/// (set numbers 2048–4095).
 pub fn chromas() -> Vec<String> {
     range(2048, 4095)
         .into_iter()
@@ -234,6 +308,16 @@ pub fn chromas() -> Vec<String> {
         .collect()
 }
 
+/// Get the chromas of all rotations (modes) of a pitch-class set.
+///
+/// With `normalize = true`, only rotations that start on a set pitch class are
+/// returned. Returns an empty vector for invalid input.
+///
+/// ```rust
+/// use tonal_rs::pcset;
+/// // the major scale has seven distinct rotations
+/// assert_eq!(pcset::modes("101011010101", true).len(), 7);
+/// ```
 pub fn modes<T: IntoPcset>(set: T, normalize: bool) -> Vec<String> {
     let Some(pcs) = set.into_pcset() else {
         return vec![];
@@ -245,10 +329,27 @@ pub fn modes<T: IntoPcset>(set: T, normalize: bool) -> Vec<String> {
         .collect()
 }
 
+/// Whether two pitch-class sets contain the same pitch classes.
+///
+/// ```rust
+/// use tonal_rs::pcset;
+/// assert!(pcset::is_equal("101011010101", "101011010101"));
+/// assert!(!pcset::is_equal("101011010101", "100010010000"));
+/// ```
 pub fn is_equal<T: IntoPcset>(s1: T, s2: T) -> bool {
     s1.pcset_num() == s2.pcset_num()
 }
 
+/// Build a predicate that is true when its argument is a proper subset of `set`.
+///
+/// `is_subset_of(larger)(smaller)` is true when all of `smaller`'s pitch
+/// classes are contained in `larger` and the two differ.
+///
+/// ```rust
+/// use tonal_rs::pcset;
+/// let is_subset = pcset::is_subset_of("111111111111");
+/// assert!(is_subset("101011010101"));
+/// ```
 pub fn is_subset_of<T: IntoPcset>(set: T) -> impl Fn(T) -> bool {
     let s = set.pcset_num();
 
@@ -259,6 +360,17 @@ pub fn is_subset_of<T: IntoPcset>(set: T) -> impl Fn(T) -> bool {
     }
 }
 
+/// Build a predicate that is true when its argument is a proper superset of
+/// `set`.
+///
+/// `is_superset_of(smaller)(larger)` is true when `larger` contains all of
+/// `smaller`'s pitch classes and the two differ.
+///
+/// ```rust
+/// use tonal_rs::pcset;
+/// let is_superset = pcset::is_superset_of("100010010000");
+/// assert!(is_superset("101011010101"));
+/// ```
 pub fn is_superset_of<T: IntoPcset>(set: T) -> impl Fn(T) -> bool {
     let s = set.pcset_num();
 
@@ -269,6 +381,14 @@ pub fn is_superset_of<T: IntoPcset>(set: T) -> impl Fn(T) -> bool {
     }
 }
 
+/// Build a predicate testing whether a note belongs to the pitch-class set.
+///
+/// ```rust
+/// use tonal_rs::pcset;
+/// let in_c_major = pcset::is_note_included_in("101011010101");
+/// assert!(in_c_major("E"));
+/// assert!(!in_c_major("C#"));
+/// ```
 pub fn is_note_included_in<T>(set: T) -> impl Fn(&str) -> bool
 where
     T: IntoPcset,
@@ -281,6 +401,13 @@ where
     }
 }
 
+/// Build a function that keeps only the notes belonging to the pitch-class set.
+///
+/// ```rust
+/// use tonal_rs::pcset;
+/// let keep = pcset::filter("101011010101");
+/// assert_eq!(keep(&["C", "C#", "D"]), ["C", "D"]);
+/// ```
 pub fn filter<T: IntoPcset>(set: T) -> impl Fn(&[&str]) -> Vec<String> {
     let is_included = is_note_included_in(set);
 

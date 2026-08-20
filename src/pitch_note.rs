@@ -1,3 +1,9 @@
+//! Parse note names into [`Note`] values.
+//!
+//! This module owns the [`Note`] type and its parsing from scientific-notation
+//! strings such as `"C4"`, `"Bb"` or `"F##3"`. The higher-level [`note`](crate::note)
+//! module builds on it. [`note`] is re-exported there as `note::get`.
+
 use std::{borrow::Cow, str::FromStr};
 
 use crate::{
@@ -8,6 +14,10 @@ use crate::{
 
 type NoteTokens = (String, String, String, String);
 
+/// A parsed note with all of its computed properties.
+///
+/// Fields are private; read them through [`Note::parts`] or the accessors in
+/// the [`note`](crate::note) module.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Note {
     pub(crate) step: usize,
@@ -24,23 +34,38 @@ pub struct Note {
     pub(crate) freq: Option<f32>,
 }
 
+/// A borrowing, fully public view of a [`Note`]'s fields, returned by
+/// [`Note::parts`].
 #[derive(Clone, Copy, Debug)]
 pub struct NoteParts<'a> {
+    /// Diatonic step, `0` (C) to `6` (B).
     pub step: usize,
+    /// Alteration in semitones (positive = sharps, negative = flats).
     pub alt: i32,
+    /// Octave, if any.
     pub oct: Option<i32>,
+    /// Full name, e.g. `"C#4"`.
     pub name: &'a str,
+    /// Letter, e.g. `'C'`.
     pub letter: char,
+    /// Accidentals, e.g. `"#"`.
     pub acc: &'a str,
+    /// Pitch class (name without octave), e.g. `"C#"`.
     pub pc: &'a str,
+    /// Chroma, the pitch class as a number 0–11.
     pub chroma: i32,
+    /// Height in semitones.
     pub height: i32,
+    /// Coordinates on the line of fifths.
     pub coord: PitchCoordinates,
+    /// MIDI number, if in range and octave is present.
     pub midi: Option<i32>,
+    /// Frequency in Hz, if octave is present.
     pub freq: Option<f32>,
 }
 
 impl Note {
+    /// A borrowing view of all fields.
     pub fn parts(&self) -> NoteParts<'_> {
         NoteParts {
             step: self.step,
@@ -71,6 +96,13 @@ impl std::fmt::Display for Note {
     }
 }
 
+/// Parse a note name into a [`Note`], or `None` if it is not a valid note.
+///
+/// ```rust
+/// use tonal_rs::pitch_note;
+/// assert_eq!(pitch_note::note("Bb4").unwrap().parts().midi, Some(70));
+/// assert!(pitch_note::note("x").is_none());
+/// ```
 pub fn note(name: &str) -> Option<Note> {
     parse(name)
 }
@@ -103,7 +135,13 @@ impl FromStr for Note {
     }
 }
 
+/// Conversion into a [`Note`], implemented for note names (`&str`, `String`),
+/// [`Note`] values and [`Pitch`] references.
+///
+/// This lets the [`note`](crate::note) functions accept either a name or an
+/// already-parsed note.
 pub trait IntoNote {
+    /// Parse or convert `self` into a [`Note`], returning `None` if invalid.
     fn into_note(self) -> Option<Note>;
 }
 
@@ -137,6 +175,14 @@ impl IntoNote for &Pitch {
     }
 }
 
+/// Convert an accidental string into an alteration number
+/// (`"#"` => `1`, `"bb"` => `-2`, `""` => `0`).
+///
+/// ```rust
+/// use tonal_rs::pitch_note;
+/// assert_eq!(pitch_note::acc_to_alt("#"), 1);
+/// assert_eq!(pitch_note::acc_to_alt("bb"), -2);
+/// ```
 pub fn acc_to_alt(acc: &str) -> i32 {
     let len = acc.chars().count() as i32;
     acc.chars()
@@ -144,6 +190,14 @@ pub fn acc_to_alt(acc: &str) -> i32 {
         .map_or(len, |c| if c == 'b' { -len } else { len })
 }
 
+/// Convert an alteration number into an accidental string
+/// (`1` => `"#"`, `-2` => `"bb"`, `0` => `""`).
+///
+/// ```rust
+/// use tonal_rs::pitch_note;
+/// assert_eq!(pitch_note::alt_to_acc(1), "#");
+/// assert_eq!(pitch_note::alt_to_acc(0), "");
+/// ```
 pub fn alt_to_acc(alt: i32) -> String {
     if alt < 0 {
         "b".repeat(alt.unsigned_abs() as usize)

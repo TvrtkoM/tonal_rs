@@ -1,16 +1,30 @@
+//! Parse time signatures.
+//!
+//! Parse a time signature from a string (`"4/4"`, `"3+2/8"`) or a numeric tuple
+//! into a [`TimeSignature`] with [`get`], reading its `upper`, `lower`, `kind`
+//! and any `additive` grouping.
+
 use std::{borrow::Cow, str::FromStr};
 
 use crate::{error::TonalParseError, pitch::Named, regexes};
 
+/// The classification of a time signature.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum TimeSignatureType {
+    /// Simple meter (e.g. 4/4, 3/4).
     Simple,
+    /// Compound meter (upper divisible by 3 above 3, e.g. 6/8, 9/8).
     Compound,
+    /// Irregular / additive meter (e.g. 3+2/8).
     Irregular,
+    /// Irrational meter (lower not a power of two).
     Irrational,
 }
 
+/// A parsed time signature.
+///
+/// Fields are private; read them through [`TimeSignature::parts`].
 #[derive(Clone, Debug)]
 pub struct TimeSignature {
     pub(crate) name: String,
@@ -20,16 +34,24 @@ pub struct TimeSignature {
     pub(crate) additive: Vec<u32>,
 }
 
+/// A borrowing, fully public view of a [`TimeSignature`], returned by
+/// [`TimeSignature::parts`].
 #[derive(Clone, Copy, Debug)]
 pub struct TimeSignatureParts<'a> {
+    /// The signature name, e.g. `"4/4"`.
     pub name: &'a str,
+    /// The upper number (beats per measure).
     pub upper: u32,
+    /// The lower number (beat unit).
     pub lower: u32,
+    /// The classification.
     pub kind: TimeSignatureType,
+    /// The additive grouping of the upper number, if any (e.g. `[3, 2]`).
     pub additive: &'a [u32],
 }
 
 impl TimeSignature {
+    /// A borrowing view of all fields.
     pub fn parts(&self) -> TimeSignatureParts<'_> {
         TimeSignatureParts {
             name: &self.name,
@@ -53,7 +75,10 @@ impl std::fmt::Display for TimeSignature {
     }
 }
 
+/// Conversion into a [`TimeSignature`], implemented for a `&str` (`"4/4"`), a
+/// `(u32, u32)` tuple and a `(&str, &str)` tuple.
 pub trait IntoTimeSignature {
+    /// Parse or build a [`TimeSignature`].
     fn into_time_signature(self) -> Option<TimeSignature>;
 }
 
@@ -98,13 +123,29 @@ impl FromStr for TimeSignature {
     }
 }
 
+/// Get a [`TimeSignature`] from a string or numeric tuple.
+///
+/// Returns `None` for an invalid time signature.
+///
+/// ```rust
+/// use tonal_rs::time_signature::{self, TimeSignatureType};
+/// let ts = time_signature::get("3/4").unwrap();
+/// assert_eq!(ts.parts().upper, 3);
+/// assert_eq!(ts.parts().lower, 4);
+/// assert_eq!(time_signature::get((6, 8)).unwrap().parts().kind, TimeSignatureType::Compound);
+/// assert!(time_signature::get("x").is_none());
+/// ```
 pub fn get<T: IntoTimeSignature>(literal: T) -> Option<TimeSignature> {
     literal.into_time_signature()
 }
 
+/// An intermediate parse result: either a simple `upper/lower` or an additive
+/// grouping with a lower number.
 #[derive(Clone, Debug)]
 pub enum ParsedTimeSignature {
+    /// Additive upper numbers with a single lower number, e.g. `3+2/8`.
     Additive(Vec<u32>, u32),
+    /// A simple `upper/lower` signature.
     Simple(u32, u32),
 }
 
@@ -184,6 +225,8 @@ impl FromStr for ParsedTimeSignature {
 
 static NAMES: &[&str] = &["4/4", "3/4", "2/4", "2/2", "12/8", "9/8", "6/8", "3/8"];
 
+/// The common time signature names
+/// (`["4/4", "3/4", "2/4", "2/2", "12/8", "9/8", "6/8", "3/8"]`).
 pub fn names() -> &'static [&'static str] {
     NAMES
 }

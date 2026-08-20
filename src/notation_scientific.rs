@@ -1,3 +1,10 @@
+//! Parse and render scientific pitch notation.
+//!
+//! A lightweight parser for scientific-notation note names such as `"C#4"`,
+//! producing a [`ScientificPitch`] (step, alteration, octave). Use [`parse`] to
+//! read a name and [`name`] to render one back. For full note properties use
+//! the [`note`](crate::note) module instead.
+
 use std::borrow::Cow;
 use std::str::FromStr;
 
@@ -5,6 +12,10 @@ use crate::error::TonalParseError;
 use crate::pitch::{Named, alt_to_acc};
 use crate::regexes;
 
+/// A pitch in scientific notation: a diatonic step, an alteration and an
+/// optional octave.
+///
+/// Fields are private; read them through [`ScientificPitch::parts`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScientificPitch {
     pub(crate) step: usize,
@@ -12,14 +23,20 @@ pub struct ScientificPitch {
     pub(crate) oct: Option<i32>,
 }
 
+/// A copyable, fully public view of a [`ScientificPitch`], returned by
+/// [`ScientificPitch::parts`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScientificPitchParts {
+    /// Diatonic step, `0` (C) to `6` (B).
     pub step: usize,
+    /// Alteration in semitones.
     pub alt: i32,
+    /// Octave, if any.
     pub oct: Option<i32>,
 }
 
 impl ScientificPitch {
+    /// A copyable view of all fields.
     pub fn parts(&self) -> ScientificPitchParts {
         ScientificPitchParts {
             step: self.step,
@@ -46,6 +63,18 @@ pub(crate) fn tokenize(s: &str) -> (String, String, String, String) {
     }
 }
 
+/// Parse a scientific-notation name into a [`ScientificPitch`].
+///
+/// Returns `None` for an invalid name.
+///
+/// ```rust
+/// use tonal_rs::notation_scientific;
+/// let p = notation_scientific::parse("C#4").unwrap();
+/// assert_eq!(p.parts().step, 0);
+/// assert_eq!(p.parts().alt, 1);
+/// assert_eq!(p.parts().oct, Some(4));
+/// assert!(notation_scientific::parse("x").is_none());
+/// ```
 pub fn parse(note_name: &str) -> Option<ScientificPitch> {
     let (letter, acc, oct_str, rest) = tokenize(note_name);
 
@@ -89,6 +118,15 @@ impl FromStr for ScientificPitch {
     }
 }
 
+/// Render a [`ScientificPitch`] as a scientific-notation name.
+///
+/// The inverse of [`parse`].
+///
+/// ```rust
+/// use tonal_rs::notation_scientific;
+/// let p = notation_scientific::parse("C#4").unwrap();
+/// assert_eq!(notation_scientific::name(&p), "C#4");
+/// ```
 pub fn name(pitch: &ScientificPitch) -> String {
     let ScientificPitch { step, alt, oct } = pitch;
     let Some(letter) = "CDEFGAB".chars().nth(*step) else {

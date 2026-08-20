@@ -1,3 +1,11 @@
+//! Major and minor keys, their scales and their chords.
+//!
+//! Build a [`MajorKey`] or [`MinorKey`] from a tonic with [`major_key`] /
+//! [`minor_key`] to get its scale, diatonic triads and sevenths, harmonic
+//! functions, secondary dominants and more. Minor keys carry the natural,
+//! harmonic and melodic forms. [`major_tonic_from_key_signature`] resolves a
+//! key signature to its tonic.
+
 use std::borrow::Cow;
 
 use crate::note::{transpose, transpose_fifths};
@@ -6,6 +14,10 @@ use crate::pitch_note::{IntoNote, acc_to_alt, alt_to_acc};
 use crate::regexes;
 use crate::roman_numeral::IntoRomanNumeral;
 
+/// The harmonic content of one key scale: its notes, chords and related
+/// harmony.
+///
+/// Fields are private; read them through [`KeyScale::parts`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyScale {
     pub(crate) tonic: String,
@@ -22,6 +34,9 @@ pub struct KeyScale {
     pub(crate) substitute_dominant_supertonics: Vec<String>,
 }
 
+/// A major key: its scale plus tonic, relative minor and key signature.
+///
+/// Fields are private; read them through [`MajorKey::parts`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MajorKey {
     pub(crate) scale: KeyScale,
@@ -31,6 +46,9 @@ pub struct MajorKey {
     pub(crate) key_signature: String,
 }
 
+/// A minor key, carrying the natural, harmonic and melodic scales.
+///
+/// Fields are private; read them through [`MinorKey::parts`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MinorKey {
     pub(crate) major_relative: String,
@@ -42,6 +60,9 @@ pub struct MinorKey {
     pub(crate) melodic: KeyScale,
 }
 
+/// A chord within a key, with the harmonic roles it plays.
+///
+/// Fields are private; read them through [`KeyChord::parts`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyChord {
     pub(crate) name: String,
@@ -60,49 +81,84 @@ impl std::fmt::Display for KeyChord {
     }
 }
 
+/// A borrowing, fully public view of a [`KeyScale`], returned by
+/// [`KeyScale::parts`].
 #[derive(Debug, Clone, Copy)]
 pub struct KeyScaleParts<'a> {
+    /// The tonic note.
     pub tonic: &'a str,
+    /// The roman-numeral grades, e.g. `["I", "II", …]`.
     pub grades: &'a [String],
+    /// The intervals from the tonic.
     pub intervals: &'a [String],
+    /// The scale notes.
     pub scale: &'a [String],
+    /// The diatonic triads.
     pub triads: &'a [String],
+    /// The diatonic seventh chords.
     pub chords: &'a [String],
+    /// The harmonic function of each chord (`T`, `SD`, `D`).
     pub chords_harmonic_function: &'a [String],
+    /// The scale to use over each chord.
     pub chord_scales: &'a [String],
+    /// The secondary dominant of each degree.
     pub secondary_dominants: &'a [String],
+    /// The related ii chord of each secondary dominant.
     pub secondary_dominant_supertonics: &'a [String],
+    /// The tritone-substitute dominant of each degree.
     pub substitute_dominants: &'a [String],
+    /// The related ii chord of each substitute dominant.
     pub substitute_dominant_supertonics: &'a [String],
 }
 
+/// A borrowing, fully public view of a [`MajorKey`], returned by
+/// [`MajorKey::parts`].
 #[derive(Debug, Clone, Copy)]
 pub struct MajorKeyParts<'a> {
+    /// The key scale and its harmony.
     pub scale: &'a KeyScale,
+    /// The relative minor tonic.
     pub minor_relative: &'a str,
+    /// The tonic note.
     pub tonic: &'a str,
+    /// The number of sharps (positive) or flats (negative).
     pub alteration: i32,
+    /// The key signature as accidentals.
     pub key_signature: &'a str,
 }
 
+/// A borrowing, fully public view of a [`MinorKey`], returned by
+/// [`MinorKey::parts`].
 #[derive(Debug, Clone, Copy)]
 pub struct MinorKeyParts<'a> {
+    /// The relative major tonic.
     pub major_relative: &'a str,
+    /// The tonic note.
     pub tonic: &'a str,
+    /// The number of sharps (positive) or flats (negative).
     pub alteration: i32,
+    /// The key signature as accidentals.
     pub key_signature: &'a str,
+    /// The natural minor scale.
     pub natural: &'a KeyScale,
+    /// The harmonic minor scale.
     pub harmonic: &'a KeyScale,
+    /// The melodic minor scale.
     pub melodic: &'a KeyScale,
 }
 
+/// A borrowing, fully public view of a [`KeyChord`], returned by
+/// [`KeyChord::parts`].
 #[derive(Debug, Clone, Copy)]
 pub struct KeyChordParts<'a> {
+    /// The chord name.
     pub name: &'a str,
+    /// The harmonic roles the chord plays in the key.
     pub roles: &'a [String],
 }
 
 impl KeyScale {
+    /// A borrowing view of all fields.
     pub fn parts(&self) -> KeyScaleParts<'_> {
         KeyScaleParts {
             tonic: &self.tonic,
@@ -122,6 +178,7 @@ impl KeyScale {
 }
 
 impl MajorKey {
+    /// A borrowing view of all fields.
     pub fn parts(&self) -> MajorKeyParts<'_> {
         MajorKeyParts {
             scale: &self.scale,
@@ -134,6 +191,7 @@ impl MajorKey {
 }
 
 impl MinorKey {
+    /// A borrowing view of all fields.
     pub fn parts(&self) -> MinorKeyParts<'_> {
         MinorKeyParts {
             major_relative: &self.major_relative,
@@ -148,6 +206,7 @@ impl MinorKey {
 }
 
 impl KeyChord {
+    /// A borrowing view of all fields.
     pub fn parts(&self) -> KeyChordParts<'_> {
         KeyChordParts {
             name: &self.name,
@@ -350,6 +409,16 @@ fn melodic_scale(tonic: &str) -> KeyScale {
     )(tonic)
 }
 
+/// Build a [`MajorKey`] from a tonic note.
+///
+/// Returns `None` for an invalid tonic.
+///
+/// ```rust
+/// use tonal_rs::key;
+/// let c = key::major_key("C").unwrap();
+/// assert_eq!(c.parts().minor_relative, "A");
+/// assert_eq!(c.parts().key_signature, "");
+/// ```
 pub fn major_key(tonic: &str) -> Option<MajorKey> {
     let pc = tonic.into_note().map(|n| n.pc)?;
 
@@ -369,6 +438,17 @@ pub fn major_key(tonic: &str) -> Option<MajorKey> {
     Some(major_key)
 }
 
+/// Build a [`MinorKey`] from a tonic note.
+///
+/// Carries the natural, harmonic and melodic scales. Returns `None` for an
+/// invalid tonic.
+///
+/// ```rust
+/// use tonal_rs::key;
+/// let a = key::minor_key("A").unwrap();
+/// assert_eq!(a.parts().major_relative, "C");
+/// assert_eq!(a.parts().key_signature, "");
+/// ```
 pub fn minor_key(tonic: &str) -> Option<MinorKey> {
     let pc = tonic.into_note().map(|n| n.pc)?;
 
@@ -436,6 +516,10 @@ fn key_chords_of(key: &KeyScale, chords: &mut Vec<KeyChord>) {
     }
 }
 
+/// Get all the chords of a major key, each with its harmonic roles.
+///
+/// Includes diatonic chords plus secondary and substitute dominants. Returns an
+/// empty vector for an invalid tonic.
 pub fn major_key_chords(tonic: &str) -> Vec<KeyChord> {
     let mut chords: Vec<KeyChord> = vec![];
     if let Some(key) = major_key(tonic) {
@@ -444,6 +528,10 @@ pub fn major_key_chords(tonic: &str) -> Vec<KeyChord> {
     chords
 }
 
+/// Get all the chords of a minor key (natural, harmonic and melodic), each with
+/// its harmonic roles.
+///
+/// Returns an empty vector for an invalid tonic.
 pub fn minor_key_chords(tonic: &str) -> Vec<KeyChord> {
     let mut chords: Vec<KeyChord> = vec![];
     if let Some(key) = minor_key(tonic) {
@@ -454,7 +542,10 @@ pub fn minor_key_chords(tonic: &str) -> Vec<KeyChord> {
     chords
 }
 
+/// Conversion of a key signature into a major tonic, implemented for an
+/// accidental string (`"###"`, `"bb"`) and a fifths count (`i32`).
 pub trait IntoMajorTonic {
+    /// The major tonic for this key signature.
     fn into_major_tonic(self) -> Option<String>;
 }
 
@@ -474,6 +565,16 @@ impl IntoMajorTonic for i32 {
     }
 }
 
+/// Get the major tonic corresponding to a key signature.
+///
+/// Returns `None` for an invalid key signature.
+///
+/// ```rust
+/// use tonal_rs::key;
+/// assert_eq!(key::major_tonic_from_key_signature("###").as_deref(), Some("A"));
+/// assert_eq!(key::major_tonic_from_key_signature(-1).as_deref(), Some("F"));
+/// assert_eq!(key::major_tonic_from_key_signature("other"), None);
+/// ```
 pub fn major_tonic_from_key_signature<T: IntoMajorTonic>(sig: T) -> Option<String> {
     sig.into_major_tonic()
 }

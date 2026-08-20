@@ -1,9 +1,18 @@
+//! Dictionaries of chord voicings, keyed by chord symbol.
+//!
+//! A voicing dictionary maps a chord symbol to a list of interval sets that
+//! spell usable voicings. [`TRIADS`] and [`LEFTHAND`] are built-in
+//! dictionaries; [`all`] combines them. [`lookup`] resolves a symbol (via chord
+//! aliases if needed) to its voicings.
+
 use std::sync::LazyLock;
 
 use crate::chord;
 
+/// A voicing dictionary: chord symbols paired with their interval-set voicings.
 pub type VoicingDictionary = [(&'static str, &'static [&'static str])];
 
+/// Root-position and inverted voicings of the four triad qualities.
 #[rustfmt::skip]
 pub const TRIADS: &VoicingDictionary = &[
     ("M",   &["1P 3M 5P", "3M 5P 8P", "5P 8P 10M"]),
@@ -12,6 +21,7 @@ pub const TRIADS: &VoicingDictionary = &[
     ("aug", &["1P 3M 5A", "3M 5A 8P", "5A 8P 10M"]),
 ];
 
+/// Jazz "left-hand" (rootless) voicings for common seventh chords.
 #[rustfmt::skip]
 pub const LEFTHAND: &VoicingDictionary = &[
     ("m7",   &["3m 5P 7m 9M", "7m 9M 10m 12P"]),
@@ -31,12 +41,25 @@ pub const LEFTHAND: &VoicingDictionary = &[
 static ALL: LazyLock<Vec<(&'static str, &'static [&'static str])>> =
     LazyLock::new(|| TRIADS.iter().chain(LEFTHAND.iter()).copied().collect());
 
+/// The combined dictionary of [`TRIADS`] and [`LEFTHAND`] voicings.
 pub fn all() -> &'static VoicingDictionary {
     &ALL
 }
 
+/// The default voicing dictionary ([`LEFTHAND`]).
 pub const DEFAULT_DICTIONARY: &VoicingDictionary = LEFTHAND;
 
+/// Look up the voicings for a chord symbol in a dictionary.
+///
+/// Matches the symbol directly, or via the chord's aliases. Returns `None` if
+/// the symbol is not in the dictionary.
+///
+/// ```rust
+/// use tonal_rs::voicing_dictionary::{self, TRIADS};
+/// let voicings = voicing_dictionary::lookup("M", TRIADS).unwrap();
+/// assert_eq!(voicings[0], "1P 3M 5P");
+/// assert!(voicing_dictionary::lookup("nope", TRIADS).is_none());
+/// ```
 pub fn lookup(symbol: &str, dictionary: &VoicingDictionary) -> Option<Vec<String>> {
     if let Some((_, voicings)) = dictionary.iter().find(|(sym, _)| *sym == symbol) {
         return Some(voicings.iter().map(|s| s.to_string()).collect());

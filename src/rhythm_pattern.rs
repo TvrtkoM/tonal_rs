@@ -1,5 +1,20 @@
+//! Create and manipulate rhythmic onset patterns.
+//!
+//! A [`RhythmPattern`] is a sequence of `0`/`1` steps where `1` marks an onset.
+//! Build patterns from binary/hex numbers ([`binary`], [`hex`]), inter-onset
+//! gaps ([`onsets`]), randomness ([`random`], [`probability`]) or the Euclidean
+//! algorithm ([`euclid`]), and [`rotate`] them.
+
+/// A rhythm as a sequence of steps, where `1` is an onset and `0` is a rest.
 pub type RhythmPattern = Vec<u8>;
 
+/// Build a pattern from the binary digits of each number.
+///
+/// ```rust
+/// use tonal_rs::rhythm_pattern;
+/// assert_eq!(rhythm_pattern::binary(&[13]), [1, 1, 0, 1]);
+/// assert_eq!(rhythm_pattern::binary(&[12, 13]), [1, 1, 0, 0, 1, 1, 0, 1]);
+/// ```
 pub fn binary(numbers: &[u32]) -> RhythmPattern {
     let mut pattern = RhythmPattern::new();
     for number in numbers {
@@ -10,6 +25,12 @@ pub fn binary(numbers: &[u32]) -> RhythmPattern {
     pattern
 }
 
+/// Build a pattern from a hexadecimal string, four steps per hex digit.
+///
+/// ```rust
+/// use tonal_rs::rhythm_pattern;
+/// assert_eq!(rhythm_pattern::hex("8f"), [1, 0, 0, 0, 1, 1, 1, 1]);
+/// ```
 pub fn hex(hex_number: &str) -> RhythmPattern {
     let mut pattern = RhythmPattern::new();
     for c in hex_number.chars() {
@@ -24,6 +45,13 @@ pub fn hex(hex_number: &str) -> RhythmPattern {
     pattern
 }
 
+/// Build a pattern from inter-onset gaps: each number is the count of rests
+/// following an onset.
+///
+/// ```rust
+/// use tonal_rs::rhythm_pattern;
+/// assert_eq!(rhythm_pattern::onsets(&[1, 2, 2, 1]), [1, 0, 1, 0, 0, 1, 0, 0, 1, 0]);
+/// ```
 pub fn onsets(numbers: &[u32]) -> RhythmPattern {
     let mut pattern = RhythmPattern::new();
     for number in numbers {
@@ -33,6 +61,16 @@ pub fn onsets(numbers: &[u32]) -> RhythmPattern {
     pattern
 }
 
+/// Build a random pattern of the given length, using `rnd` (values in `[0, 1)`)
+/// as the randomness source.
+///
+/// A step is an onset when `rnd()` is at least `probability`.
+///
+/// ```rust
+/// use tonal_rs::rhythm_pattern;
+/// // a constant source above the threshold marks every step as an onset
+/// assert_eq!(rhythm_pattern::random_with(4, 0.5, || 1.0), [1, 1, 1, 1]);
+/// ```
 pub fn random_with(length: usize, probability: f64, mut rnd: impl FnMut() -> f64) -> RhythmPattern {
     let mut pattern = RhythmPattern::new();
     for _ in 0..length {
@@ -41,11 +79,29 @@ pub fn random_with(length: usize, probability: f64, mut rnd: impl FnMut() -> f64
     pattern
 }
 
+/// Build a random pattern of the given length using the `rand` crate.
+///
+/// Only available with the `random` feature enabled.
+///
+/// ```rust
+/// use tonal_rs::rhythm_pattern;
+/// assert_eq!(rhythm_pattern::random(8, 0.5).len(), 8);
+/// ```
 #[cfg(feature = "random")]
 pub fn random(length: usize, probability: f64) -> RhythmPattern {
     random_with(length, probability, rand::random::<f64>)
 }
 
+/// Build a pattern where each step is an onset with its own probability, using
+/// `rnd` as the randomness source.
+///
+/// ```rust
+/// use tonal_rs::rhythm_pattern;
+/// assert_eq!(
+///     rhythm_pattern::probability_with(&[0.5, 0.2, 0.0, 1.0, 0.0], || 0.5),
+///     [1, 0, 0, 1, 0],
+/// );
+/// ```
 pub fn probability_with(probabilities: &[f64], mut rnd: impl FnMut() -> f64) -> RhythmPattern {
     probabilities
         .iter()
@@ -53,11 +109,28 @@ pub fn probability_with(probabilities: &[f64], mut rnd: impl FnMut() -> f64) -> 
         .collect()
 }
 
+/// Build a pattern where each step is an onset with its own probability, using
+/// the `rand` crate.
+///
+/// Only available with the `random` feature enabled.
+///
+/// ```rust
+/// use tonal_rs::rhythm_pattern;
+/// // probability 1.0 is always an onset, regardless of the random draw
+/// assert_eq!(rhythm_pattern::probability(&[1.0, 1.0, 1.0]), [1, 1, 1]);
+/// ```
 #[cfg(feature = "random")]
 pub fn probability(probabilities: &[f64]) -> RhythmPattern {
     probability_with(probabilities, rand::random::<f64>)
 }
 
+/// Rotate a pattern by a number of steps (positive rotates right).
+///
+/// ```rust
+/// use tonal_rs::rhythm_pattern;
+/// assert_eq!(rhythm_pattern::rotate(&[1, 0, 0, 1], 1), [1, 1, 0, 0]);
+/// assert_eq!(rhythm_pattern::rotate(&[1, 0, 0, 1], -1), [0, 0, 1, 1]);
+/// ```
 pub fn rotate(pattern: &[u8], rotations: i32) -> RhythmPattern {
     let len = pattern.len();
     if len == 0 {
@@ -72,6 +145,13 @@ pub fn rotate(pattern: &[u8], rotations: i32) -> RhythmPattern {
         .collect()
 }
 
+/// Build a Euclidean rhythm distributing `beats` onsets as evenly as possible
+/// over `steps` steps.
+///
+/// ```rust
+/// use tonal_rs::rhythm_pattern;
+/// assert_eq!(rhythm_pattern::euclid(8, 3), [1, 0, 0, 1, 0, 0, 1, 0]);
+/// ```
 pub fn euclid(steps: usize, beats: usize) -> RhythmPattern {
     let mut pattern = RhythmPattern::new();
     let mut d: i64 = -1;

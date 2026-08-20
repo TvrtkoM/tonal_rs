@@ -1,3 +1,9 @@
+//! Detect chord names from a set of notes.
+//!
+//! [`detect`] returns the chord symbols that a group of notes spells,
+//! including inversions (as slash chords). Pass [`DetectOptions`] to assume a
+//! perfect fifth when one is missing.
+
 use crate::{
     chord_type::{ChordType, all},
     pcset::{IntoPcset, modes},
@@ -76,8 +82,11 @@ fn with_perfect_fifth(chroma: &str) -> Option<String> {
     }
 }
 
+/// Options for [`detect`].
 #[derive(Default, Clone, Copy)]
 pub struct DetectOptions {
+    /// Treat a missing fifth as a perfect fifth, so e.g. `["D", "F", "C"]` is
+    /// detected as `Dm7`.
     pub assume_perfect_fifth: bool,
 }
 
@@ -140,6 +149,16 @@ fn find_matches(notes: &[&str], weight: f32, options: DetectOptions) -> Vec<Foun
     found
 }
 
+/// Detect the chord names spelled by a set of notes.
+///
+/// Results are ordered by likelihood; inversions appear as slash chords.
+/// Returns an empty vector when no notes are given.
+///
+/// ```rust
+/// use tonal_rs::chord_detect::{self, DetectOptions};
+/// assert_eq!(chord_detect::detect(&["D", "F#", "A", "C"], DetectOptions::default()), ["D7"]);
+/// assert_eq!(chord_detect::detect(&["F#", "A", "C", "D"], DetectOptions::default()), ["D7/F#"]);
+/// ```
 pub fn detect(source: &[&str], options: DetectOptions) -> Vec<String> {
     let notes: Vec<_> = source
         .iter()

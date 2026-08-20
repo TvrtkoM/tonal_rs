@@ -1,8 +1,25 @@
+//! Build ranges of notes between given notes.
+//!
+//! [`numeric`] returns the MIDI numbers spanning a list of notes (filling in
+//! every semitone between successive anchors); [`chromatic`] returns those as
+//! note names.
+
 use crate::{
     collection::range,
     midi::{ToMidi, ToNoteNameOptions, midi_to_note_name},
 };
 
+/// Get the MIDI numbers spanning a list of notes.
+///
+/// Fills in every chromatic step between successive notes, ascending or
+/// descending. Returns an empty vector if the input is empty or contains an
+/// invalid note.
+///
+/// ```rust
+/// use tonal_rs::range;
+/// assert_eq!(range::numeric(&["C4", "E4"][..]), [60, 61, 62, 63, 64]);
+/// assert_eq!(range::numeric(&["E4", "C4"][..]), [64, 63, 62, 61, 60]);
+/// ```
 pub fn numeric<T: ToMidi>(notes: &[T]) -> Vec<i32> {
     let midi: Vec<_> = notes.iter().filter_map(|n| n.to_midi()).collect();
 
@@ -19,6 +36,15 @@ pub fn numeric<T: ToMidi>(notes: &[T]) -> Vec<i32> {
     result
 }
 
+/// Get the note names of a chromatic range spanning a list of notes.
+///
+/// Pass [`ToNoteNameOptions`] to prefer sharps or pitch classes. Returns an
+/// empty vector if the input is empty or contains an invalid note.
+///
+/// ```rust
+/// use tonal_rs::range;
+/// assert_eq!(range::chromatic(&["C4", "E4"][..], None), ["C4", "Db4", "D4", "Eb4", "E4"]);
+/// ```
 pub fn chromatic<T: ToMidi>(notes: &[T], options: Option<ToNoteNameOptions>) -> Vec<String> {
     numeric(notes)
         .into_iter()

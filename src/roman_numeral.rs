@@ -1,3 +1,10 @@
+//! Parse roman numeral chord symbols.
+//!
+//! A roman numeral such as `"bIImaj7"` describes a scale degree with an
+//! accidental and a chord type. Use [`get`] to parse one into a
+//! [`RomanNumeral`], reading its `interval`, `roman` and `chord_type`; a roman
+//! numeral converts to an interval, so it can be transposed against a tonic.
+
 use std::{borrow::Cow, str::FromStr};
 
 use crate::{
@@ -8,6 +15,9 @@ use crate::{
     regexes,
 };
 
+/// A parsed roman numeral with its degree, accidental and chord type.
+///
+/// Fields are private; read them through [`RomanNumeral::parts`].
 #[derive(Clone, Debug, PartialEq)]
 pub struct RomanNumeral {
     pub(crate) step: usize,
@@ -22,21 +32,34 @@ pub struct RomanNumeral {
     pub(crate) major: bool,
 }
 
+/// A borrowing, fully public view of a [`RomanNumeral`]'s fields, returned by
+/// [`RomanNumeral::parts`].
 #[derive(Clone, Copy, Debug)]
 pub struct RomanNumeralParts<'a> {
+    /// Diatonic step, `0` (I) to `6` (VII).
     pub step: usize,
+    /// Alteration from the accidental.
     pub alt: i32,
+    /// Octave (always `0`).
     pub oct: i32,
+    /// Direction (always ascending).
     pub dir: Direction,
+    /// The full name, e.g. `"#VIIb5"`.
     pub name: &'a str,
+    /// The roman part, uppercased, e.g. `"VII"`.
     pub roman: &'a str,
+    /// The interval this degree represents, e.g. `"7A"`.
     pub interval: &'a str,
+    /// The accidental, e.g. `"#"`.
     pub acc: &'a str,
+    /// The trailing chord type, e.g. `"b5"`.
     pub chord_type: &'a str,
+    /// Whether the numeral is uppercase (major).
     pub major: bool,
 }
 
 impl RomanNumeral {
+    /// A borrowing view of all fields.
     pub fn parts(&self) -> RomanNumeralParts<'_> {
         RomanNumeralParts {
             step: self.step,
@@ -68,10 +91,26 @@ impl std::fmt::Display for RomanNumeral {
 static NAMES: &[&str] = &["I", "II", "III", "IV", "V", "VI", "VII"];
 static NAMES_MINOR: &[&str] = &["i", "ii", "iii", "iv", "v", "vi", "vii"];
 
+/// The seven roman numeral names, uppercase (`major = true`) or lowercase.
+///
+/// ```rust
+/// use tonal_rs::roman_numeral;
+/// assert_eq!(roman_numeral::names(true)[0], "I");
+/// assert_eq!(roman_numeral::names(false)[0], "i");
+/// ```
 pub fn names(major: bool) -> &'static [&'static str] {
     if major { NAMES } else { NAMES_MINOR }
 }
 
+/// Split a roman numeral string into `(name, accidental, roman, chord_type)`.
+///
+/// ```rust
+/// use tonal_rs::roman_numeral;
+/// let (_name, acc, roman, chord_type) = roman_numeral::tokenize("#VIIb5");
+/// assert_eq!(acc, "#");
+/// assert_eq!(roman, "VII");
+/// assert_eq!(chord_type, "b5");
+/// ```
 pub fn tokenize(s: &str) -> (String, String, String, String) {
     let [a, b, c, d] = regexes::ROMAN_NUMERAL
         .captures(s)
@@ -125,7 +164,10 @@ fn from_size(n: usize) -> Option<RomanNumeral> {
     parse(src)
 }
 
+/// Conversion into a [`RomanNumeral`], implemented for a name (`&str`), a
+/// degree index (`usize`), and [`Pitch`]/[`Interval`] references.
 pub trait IntoRomanNumeral {
+    /// Parse or convert `self` into a [`RomanNumeral`].
     fn into_roman_numeral(self) -> Option<RomanNumeral>;
 }
 
@@ -179,6 +221,16 @@ impl FromStr for RomanNumeral {
     }
 }
 
+/// Get a [`RomanNumeral`] from a name, degree index, pitch or interval.
+///
+/// Returns `None` for an invalid roman numeral.
+///
+/// ```rust
+/// use tonal_rs::roman_numeral;
+/// assert_eq!(roman_numeral::get("bIImaj7").unwrap().parts().interval, "2m");
+/// assert_eq!(roman_numeral::get(0usize).unwrap().parts().name, "I");
+/// assert!(roman_numeral::get("nope").is_none());
+/// ```
 pub fn get<T: IntoRomanNumeral>(src: T) -> Option<RomanNumeral> {
     src.into_roman_numeral()
 }

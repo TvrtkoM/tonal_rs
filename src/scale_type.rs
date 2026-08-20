@@ -1,14 +1,28 @@
+//! The scale dictionary — a table of known scale types.
+//!
+//! Look up a [`ScaleType`] by name, alias, chroma or set number with [`get`],
+//! or enumerate the dictionary with [`names`] and [`all`]. This is the
+//! abstract counterpart to the [`scale`](crate::scale) module, which pairs a
+//! scale type with a tonic to yield actual notes.
+
 use std::{borrow::Cow, collections::HashMap, sync::LazyLock};
 
 use crate::{pcset, pitch::Named};
 
+/// A scale type: an abstract scale (its intervals) without a tonic.
 #[derive(Debug, Clone)]
 pub struct ScaleType {
+    /// The canonical name, e.g. `"major"`.
     pub name: String,
+    /// The set number (a 12-bit chroma read as an integer).
     pub set_num: i32,
+    /// The 12-character chroma bitmap, e.g. `"101011010101"`.
     pub chroma: String,
+    /// The chroma rotated so the lowest bit is set (rotation-invariant form).
     pub normalized: String,
+    /// The intervals from the tonic, e.g. `["1P", "2M", "3M", …]`.
     pub intervals: Vec<String>,
+    /// Alternative names, e.g. `["ionian"]` for `"major"`.
     pub aliases: Vec<String>,
 }
 
@@ -72,6 +86,14 @@ fn build_dictionary() -> Dictionary {
 }
 
 /// Look up a scale type by name, alias, chroma, or set-number (as a string).
+///
+/// Returns `None` for an unknown scale type.
+///
+/// ```rust
+/// use tonal_rs::scale_type;
+/// assert_eq!(scale_type::get("major").unwrap().aliases, ["ionian"]);
+/// assert!(scale_type::get("unknown").is_none());
+/// ```
 pub fn get(name: &str) -> Option<&'static ScaleType> {
     let i = *DICTIONARY.index.get(name)?;
     Some(&DICTIONARY.scales[i])

@@ -1,3 +1,12 @@
+//! Build and query chords.
+//!
+//! A chord pairs a chord type (see [`chord_type`](crate::chord_type)) with a
+//! tonic, and optionally a bass note for slash/inverted chords. Use [`get`] to
+//! build a [`Chord`] from a symbol like `"Cmaj7"` or `"Cmaj7/E"`, reading its
+//! `notes`, `intervals`, `symbol` and related data. Other functions transpose
+//! chords ([`transpose`]), map degrees to notes ([`degrees`], [`steps`]), and
+//! find related chords and scales ([`extended`], [`reduced`], [`chord_scales`]).
+
 use std::borrow::Cow;
 
 use crate::chord_type::{ChordQuality, ChordType, all as chord_types, get as get_chord_type};
@@ -9,8 +18,12 @@ use crate::pitch_distance::{tonic_intervals_transposer, transpose as transpose_n
 use crate::pitch_note::{IntoNote, Note, tokenize_note};
 use crate::scale_type::all as scale_types;
 
+/// A tokenized chord name as `(tonic, type, bass)`.
 pub type ChordNameTokens = (String, String, String); // tonic, type, bass
 
+/// A chord: a chord type applied to a tonic (and optional bass), with its notes.
+///
+/// Fields are private; read them through [`Chord::parts`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct Chord {
     pub(crate) name: String,
@@ -29,21 +42,37 @@ pub struct Chord {
     pub(crate) notes: Vec<String>,
 }
 
+/// A borrowing, fully public view of a [`Chord`]'s fields, returned by
+/// [`Chord::parts`].
 #[derive(Debug, Clone, Copy)]
 pub struct ChordParts<'a> {
+    /// Full name, e.g. `"C major seventh"`.
     pub name: &'a str,
+    /// Broad quality.
     pub quality: ChordQuality,
+    /// Set number of the chord type.
     pub set_num: i32,
+    /// Chroma bitmap.
     pub chroma: &'a str,
+    /// Rotation-invariant chroma.
     pub normalized: &'a str,
+    /// Intervals from the tonic (reordered for inversions).
     pub intervals: &'a [String],
+    /// Chord symbols/aliases of the type.
     pub aliases: &'a [String],
+    /// The tonic pitch class, or empty if none.
     pub tonic: &'a str,
+    /// The chord-type name, e.g. `"major seventh"`.
     pub kind: &'a str,
+    /// The root pitch class, when a bass note is a chord tone.
     pub root: &'a str,
+    /// The bass pitch class, for slash chords (empty otherwise).
     pub bass: &'a str,
+    /// The degree of the root within the chord, when inverted.
     pub root_degree: Option<i32>,
+    /// The chord symbol, e.g. `"Cmaj7"`.
     pub symbol: &'a str,
+    /// The chord notes (empty when there is no tonic).
     pub notes: &'a [String],
 }
 
@@ -60,6 +89,7 @@ impl std::fmt::Display for Chord {
 }
 
 impl Chord {
+    /// A borrowing view of all fields.
     pub fn parts(&self) -> ChordParts<'_> {
         ChordParts {
             name: self.name.as_str(),
@@ -100,6 +130,15 @@ fn tokenize_bass(note: &str, chord: &str) -> ChordNameTokens {
     }
 }
 
+/// Split a chord name into `(tonic, type, bass)`.
+///
+/// ```rust
+/// use tonal_rs::chord;
+/// let (tonic, kind, bass) = chord::tokenize("Cmaj7/E");
+/// assert_eq!(tonic, "C");
+/// assert_eq!(kind, "maj7");
+/// assert_eq!(bass, "E");
+/// ```
 pub fn tokenize(name: &str) -> ChordNameTokens {
     let (letter, acc, oct, kind) = tokenize_note(name);
     if letter.is_empty() {
@@ -192,6 +231,17 @@ fn process_intervals(
     intervals
 }
 
+/// Build a [`Chord`] from an explicit type name, tonic and bass.
+///
+/// The low-level constructor behind [`get`]. `type_name` is a chord type or
+/// symbol; `optional_tonic` and `optional_bass` are note names (or `None`).
+/// Returns `None` for an unknown type or invalid note.
+///
+/// ```rust
+/// use tonal_rs::chord;
+/// assert_eq!(chord::get_chord("maj7", Some("C"), None).unwrap().parts().symbol, "Cmaj7");
+/// assert!(chord::get_chord("nope", Some("C"), None).is_none());
+/// ```
 pub fn get_chord(
     type_name: &str,
     optional_tonic: Option<&str>,
@@ -262,7 +312,10 @@ pub fn get_chord(
     })
 }
 
+/// Conversion into a [`Chord`], implemented for a chord symbol (`&str`) and for
+/// tuples: `(tonic,)`, `(tonic, type)` and `(tonic, type, bass)`.
 pub trait IntoChord {
+    /// Parse or build a [`Chord`], returning `None` if it is not valid.
     fn into_chord(self) -> Option<Chord>;
 }
 
@@ -299,12 +352,32 @@ impl IntoChord for (&str, &str, &str) {
     }
 }
 
+/// Get a [`Chord`] from a symbol or a `(tonic, type[, bass])` tuple.
+///
+/// Returns `None` if the chord is not valid.
+///
+/// ```rust
+/// use tonal_rs::chord;
+/// assert_eq!(chord::get("Cmaj7").unwrap().parts().notes.to_vec(), ["C", "E", "G", "B"]);
+/// assert_eq!(chord::get(("C", "maj7")).unwrap().parts().symbol, "Cmaj7");
+/// ```
 pub fn get<C: IntoChord>(src: C) -> Option<Chord> {
     src.into_chord()
 }
 
+/// Alias of [`get`].
 pub use self::get as chord;
 
+/// Transpose a chord name by an interval.
+///
+/// If the chord has no tonic, the input is returned unchanged (not an empty
+/// string).
+///
+/// ```rust
+/// use tonal_rs::chord;
+/// assert_eq!(chord::transpose("Cmaj7", "5P"), "Gmaj7");
+/// assert_eq!(chord::transpose("maj7", "5P"), "maj7");
+/// ```
 pub fn transpose(chord_name: &str, interval: &str) -> String {
     let (tonic, kind, bass) = tokenize(chord_name);
 
@@ -323,6 +396,9 @@ pub fn transpose(chord_name: &str, interval: &str) -> String {
     format!("{}{kind}{slash}", transpose_note(tonic, interval))
 }
 
+/// Get the names of scales that contain all the notes of the chord.
+///
+/// Returns an empty vector for an invalid chord.
 pub fn chord_scales(name: &str) -> Vec<String> {
     let c = name.into_chord();
     let Some(chord) = c else {
@@ -343,6 +419,10 @@ pub fn chord_scales(name: &str) -> Vec<String> {
         .collect()
 }
 
+/// Get the symbols of chords that are supersets of the given chord (contain all
+/// its notes and at least one more).
+///
+/// Returns an empty vector for an invalid chord.
 pub fn extended(name: &str) -> Vec<String> {
     let Some(chord) = name.into_chord() else {
         return vec![];
@@ -366,6 +446,10 @@ pub fn extended(name: &str) -> Vec<String> {
         .collect()
 }
 
+/// Get the symbols of chords that are subsets of the given chord (all their
+/// notes are contained in it).
+///
+/// Returns an empty vector for an invalid chord.
 pub fn reduced(name: &str) -> Vec<String> {
     let Some(chord) = name.into_chord() else {
         return vec![];
@@ -389,6 +473,15 @@ pub fn reduced(name: &str) -> Vec<String> {
         .collect()
 }
 
+/// Get the notes of a chord, optionally overriding the tonic.
+///
+/// Returns an empty vector for an invalid chord or a chord with no tonic.
+///
+/// ```rust
+/// use tonal_rs::chord;
+/// assert_eq!(chord::notes("Cmaj7", None), ["C", "E", "G", "B"]);
+/// assert_eq!(chord::notes("maj7", Some("D")), ["D", "F#", "A", "C#"]);
+/// ```
 pub fn notes<C: IntoChord>(chord_name: C, tonic: Option<&str>) -> Vec<String> {
     let Some(chord) = chord_name.into_chord() else {
         return vec![];
@@ -407,6 +500,17 @@ pub fn notes<C: IntoChord>(chord_name: C, tonic: Option<&str>) -> Vec<String> {
         .collect()
 }
 
+/// Build a function mapping a 1-based chord degree to a note.
+///
+/// Degree `0` returns an empty string; negative degrees descend.
+///
+/// ```rust
+/// use tonal_rs::chord;
+/// let d = chord::degrees("Cm", None);
+/// assert_eq!(d(1), "C");
+/// assert_eq!(d(2), "Eb");
+/// assert_eq!(d(0), "");
+/// ```
 pub fn degrees<C: IntoChord>(chord_name: C, tonic: Option<&str>) -> impl Fn(i32) -> String {
     let (chord_tonic, intervals) = match chord_name.into_chord() {
         Some(c) => (c.tonic, c.intervals),
@@ -428,6 +532,16 @@ pub fn degrees<C: IntoChord>(chord_name: C, tonic: Option<&str>) -> impl Fn(i32)
     }
 }
 
+/// Build a function mapping a 0-based chord step to a note.
+///
+/// Like [`degrees`] but 0-indexed: step `0` is the tonic.
+///
+/// ```rust
+/// use tonal_rs::chord;
+/// let s = chord::steps("Cm", None);
+/// assert_eq!(s(0), "C");
+/// assert_eq!(s(1), "Eb");
+/// ```
 pub fn steps<C: IntoChord>(chord_name: C, tonic: Option<&str>) -> impl Fn(i32) -> String {
     let (chord_tonic, intervals) = match chord_name.into_chord() {
         Some(c) => (c.tonic, c.intervals),

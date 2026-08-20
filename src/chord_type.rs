@@ -1,25 +1,47 @@
+//! The chord dictionary — a table of known chord types.
+//!
+//! Look up a [`ChordType`] by name, alias/symbol, chroma or set number with
+//! [`get`], or enumerate the dictionary with [`names`], [`symbols`] and
+//! [`all`]. This is the abstract counterpart to the [`chord`](crate::chord)
+//! module, which pairs a chord type with a tonic.
+
 use std::{collections::HashMap, sync::LazyLock};
 
 use crate::pcset;
 
+/// The broad quality of a chord, derived from its intervals.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ChordQuality {
+    /// Contains a major third.
     Major,
+    /// Contains a minor third (but no augmented fifth).
     Minor,
+    /// Contains an augmented fifth.
     Augmented,
+    /// Contains a diminished fifth (with a minor third, no major third).
     Diminished,
+    /// None of the above.
     Unknown,
 }
 
+/// A chord type: an abstract chord (its intervals) without a tonic.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChordType {
+    /// The full name, e.g. `"major seventh"` (may be empty for symbol-only
+    /// entries).
     pub name: String,
+    /// The broad quality.
     pub quality: ChordQuality,
+    /// The set number (a 12-bit chroma read as an integer).
     pub set_num: i32,
+    /// The 12-character chroma bitmap.
     pub chroma: String,
+    /// The rotation-invariant chroma.
     pub normalized: String,
+    /// The intervals from the tonic, e.g. `["1P", "3M", "5P", "7M"]`.
     pub intervals: Vec<String>,
+    /// The chord symbols/abbreviations, e.g. `["maj7", "Δ", …]`.
     pub aliases: Vec<String>,
 }
 
@@ -95,15 +117,27 @@ fn build_dictionary() -> Dictionary {
     }
 }
 
+/// Look up a chord type by name, alias/symbol, chroma or set number (as a
+/// string).
+///
+/// Returns `None` for an unknown chord type.
+///
+/// ```rust
+/// use tonal_rs::chord_type;
+/// assert_eq!(chord_type::get("maj7").unwrap().name, "major seventh");
+/// assert!(chord_type::get("unknown chord").is_none());
+/// ```
 pub fn get(name: &str) -> Option<&'static ChordType> {
     let i = *DICTIONARY.index.get(name)?;
     Some(&DICTIONARY.chords[i])
 }
 
+/// All chord types, ordered by set number.
 pub fn all() -> &'static [ChordType] {
     &DICTIONARY.chords
 }
 
+/// All chord-type names (excluding symbol-only entries with empty names).
 pub fn names() -> Vec<&'static str> {
     DICTIONARY
         .chords
@@ -113,6 +147,7 @@ pub fn names() -> Vec<&'static str> {
         .collect()
 }
 
+/// The primary symbol (first alias) of each chord type.
 pub fn symbols() -> Vec<&'static str> {
     DICTIONARY
         .chords
@@ -123,6 +158,8 @@ pub fn symbols() -> Vec<&'static str> {
         .collect()
 }
 
+/// Every key the dictionary is indexed by (names, aliases, chromas,
+/// set-numbers). Order is unspecified.
 pub fn keys() -> Vec<&'static str> {
     DICTIONARY.index.keys().map(|k| k.as_str()).collect()
 }

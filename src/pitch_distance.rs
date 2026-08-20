@@ -1,9 +1,26 @@
+//! Distance and transposition — the arithmetic linking notes and intervals.
+//!
+//! [`distance`] returns the interval between two notes; [`transpose`] moves a
+//! note by an interval. Both operate through coordinates on the line of fifths,
+//! so enharmonic spelling is preserved. These are re-exported by the
+//! [`note`](crate::note) and [`interval`](crate::interval) modules.
+
 use crate::{
     pitch::{Fifths, Named, Octaves, Pitch, PitchCoordinates},
     pitch_interval::{IntoInterval, coord_to_interval},
     pitch_note::IntoNote,
 };
 
+/// Get the interval between two notes.
+///
+/// Between pitch classes the result is always ascending. Returns an empty
+/// string if either note is invalid.
+///
+/// ```rust
+/// use tonal_rs::pitch_distance::distance;
+/// assert_eq!(distance("C4", "G4"), "5P");
+/// assert_eq!(distance("one", "two"), "");
+/// ```
 pub fn distance<F: IntoNote, T: IntoNote>(from_note: F, to_note: T) -> String {
     let (Some(from), Some(to)) = (from_note.into_note(), to_note.into_note()) else {
         return String::new();
@@ -29,6 +46,15 @@ pub fn distance<F: IntoNote, T: IntoNote>(from_note: F, to_note: T) -> String {
         .unwrap_or_default()
 }
 
+/// Transpose a note by an interval.
+///
+/// Returns an empty string if either argument is invalid.
+///
+/// ```rust
+/// use tonal_rs::pitch_distance::transpose;
+/// assert_eq!(transpose("C4", "5P"), "G4");
+/// assert_eq!(transpose("D", "3M"), "F#");
+/// ```
 pub fn transpose<N: IntoNote, I: IntoInterval>(note: N, interval: I) -> String {
     let interval = interval.into_interval();
     match interval {
@@ -37,6 +63,17 @@ pub fn transpose<N: IntoNote, I: IntoInterval>(note: N, interval: I) -> String {
     }
 }
 
+/// Transpose a note by raw `(fifths, octaves)` coordinates.
+///
+/// The building block behind [`transpose`] and the fifths/octave transposers in
+/// the [`note`](crate::note) module. Returns an empty string for an invalid
+/// note.
+///
+/// ```rust
+/// use tonal_rs::pitch_distance::transpose_with_coord;
+/// assert_eq!(transpose_with_coord("C4", (1, 0)), "G4");
+/// assert_eq!(transpose_with_coord("C4", (0, 1)), "C5");
+/// ```
 pub fn transpose_with_coord<N: IntoNote, C: Into<(Fifths, Octaves)>>(note: N, coord: C) -> String {
     let (fifths, octaves) = coord.into();
     let Some(note) = note.into_note() else {
