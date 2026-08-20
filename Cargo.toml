@@ -6,3 +6,6 @@ edition = "2024"
 [dependencies]
 rand = "0.10.2"
 regex = "1.13.1"
+
+[lints.rust]
+unused_results = "warn"

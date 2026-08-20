@@ -80,12 +80,12 @@ fn build_dictionary() -> Dictionary {
     for (orig, chord) in chords.iter().enumerate() {
         let pos = sorted_pos[orig];
         if !chord.name.is_empty() {
-            index.insert(chord.name.clone(), pos);
+            let _ = index.insert(chord.name.clone(), pos);
         }
-        index.insert(chord.set_num.to_string(), pos);
-        index.insert(chord.chroma.clone(), pos);
+        let _ = index.insert(chord.set_num.to_string(), pos);
+        let _ = index.insert(chord.chroma.clone(), pos);
         for alias in &chord.aliases {
-            index.insert(alias.clone(), pos);
+            let _ = index.insert(alias.clone(), pos);
         }
     }
 

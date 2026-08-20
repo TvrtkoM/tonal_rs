@@ -172,7 +172,7 @@ fn supertonics(dominants: &[String], target_triads: &[&str]) -> Vec<String> {
                 return String::new();
             }
             let mut chord_chars = chord.chars();
-            chord_chars.next_back();
+            let _ = chord_chars.next_back();
             let dom_root = chord_chars.as_str();
             let minor_root = transpose(dom_root, "5P");
             let target = target_triads[i];
@@ -233,7 +233,7 @@ fn key_scale(
                     return String::new();
                 }
                 let mut chord_chars = chord.chars();
-                chord_chars.next_back();
+                let _ = chord_chars.next_back();
                 let dom_root = chord_chars.as_str();
                 let sub_root = transpose(dom_root, "5d");
                 format!("{}{}", sub_root, "7")

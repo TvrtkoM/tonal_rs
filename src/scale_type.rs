@@ -59,11 +59,11 @@ fn build_dictionary() -> Dictionary {
         };
 
         let i = scales.len();
-        index.insert(scale.name.clone(), i);
-        index.insert(scale.chroma.clone(), i);
-        index.insert(scale.set_num.to_string(), i);
+        let _ = index.insert(scale.name.clone(), i);
+        let _ = index.insert(scale.chroma.clone(), i);
+        let _ = index.insert(scale.set_num.to_string(), i);
         for alias in &scale.aliases {
-            index.insert(alias.clone(), i);
+            let _ = index.insert(alias.clone(), i);
         }
         scales.push(scale);
     }
