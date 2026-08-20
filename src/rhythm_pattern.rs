@@ -76,7 +76,6 @@ pub fn euclid(steps: usize, beats: usize) -> RhythmPattern {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::RngExt;
 
     #[test]
     fn test_binary() {
@@ -96,8 +95,7 @@ mod tests {
 
     #[test]
     fn test_random() {
-        let mut rng = rand::rng();
-        let pattern = random(10, 0.5, || rng.random::<f64>());
+        let pattern = random(10, 0.5, rand::random::<f64>);
         assert_eq!(pattern.len(), 10);
 
         let mut current = 0.25;

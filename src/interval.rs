@@ -58,10 +58,10 @@ const IQ: [char; 12] = ['P', 'm', 'M', 'm', 'M', 'P', 'd', 'P', 'm', 'M', 'm', '
 pub fn from_semitones(semitones: i32) -> String {
     let d = if semitones < 0 { -1 } else { 1 };
     let n = semitones.abs();
-    let c = n.rem_euclid(12);
+    let c = n.rem_euclid(12) as usize;
     let o = n.div_euclid(12);
 
-    format!("{}{}", d * (IN[c as usize] + 7 * o), IQ[c as usize])
+    format!("{}{}", d * (IN[c] + 7 * o), IQ[c])
 }
 
 pub use crate::pitch_distance::distance as dist;
